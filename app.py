@@ -7,7 +7,7 @@ Problem Statement: SIH 26034
 import os
 import shutil
 from typing import Optional
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi import FastAPI, File, UploadFile, HTTPException, Form
 from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -54,27 +54,40 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount static folder
+# Mount static directory for sample assets
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 @app.get("/", response_class=HTMLResponse)
 async def serve_dashboard():
-    index_path = os.path.join(TEMPLATES_DIR, "index.html")
-    if not os.path.exists(index_path):
-        raise HTTPException(status_code=404, detail="Dashboard template not found.")
-    with open(index_path, "r", encoding="utf-8") as f:
-        return f.read()
+    index_file = os.path.join(TEMPLATES_DIR, "index.html")
+    if not os.path.exists(index_file):
+        raise HTTPException(status_code=404, detail="Dashboard UI template missing.")
+    with open(index_file, "r", encoding="utf-8") as f:
+        return HTMLResponse(content=f.read())
 
+@app.get("/api/samples")
+async def get_samples():
+    """Returns catalog of preloaded packaging inspection samples"""
+    samples = []
+    for sid, sdata in extractor.preloaded_samples.items():
+        samples.append({
+            "id": sdata.get("id", sid),
+            "title": sdata.get("title", sid),
+            "category": sdata.get("category", "Packaged Commodity"),
+            "description": sdata.get("description", ""),
+            "expected_verdict": sdata.get("expected_verdict", "INSPECT"),
+            "image_url": sdata.get("image_rel_path", "")
+        })
+    return {"samples": samples}
+
+@app.get("/api/scan/sample/{sample_id}")
 @app.post("/api/scan/demo/{sample_id}")
-async def scan_demo_sample(sample_id: str):
-    """Evaluates one of the 5 curated live demonstration sample packages"""
-    try:
-        extraction = extractor.extract_from_sample_id(sample_id)
-    except Exception as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    
+@app.get("/api/scan/demo/{sample_id}")
+async def scan_sample(sample_id: str):
+    """Instant execution for preset demonstration benchmark labels"""
+    extraction = extractor.extract_from_sample_id(sample_id)
     extracted_data = extraction["extracted_data"]
-    is_electronic = sample_id == "sample_05" or extracted_data.get("has_qr_code", False)
+    is_electronic = sample_id == "sample_05" or "electronics" in sample_id or extracted_data.get("has_qr_code", False)
     
     # Run Statutory Rule Engine
     eval_result = rule_engine.evaluate(extracted_data, is_electronic=is_electronic)
@@ -95,7 +108,10 @@ async def scan_demo_sample(sample_id: str):
     }
 
 @app.post("/api/scan/upload")
-async def scan_uploaded_image(image: UploadFile = File(...)):
+async def scan_uploaded_image(
+    image: UploadFile = File(...),
+    ocr_json: Optional[str] = Form(None)
+):
     """Uploads an arbitrary product package label image and executes compliance verification"""
     try:
         filename = f"upload_{os.urandom(6).hex()}_{image.filename}"
@@ -104,7 +120,7 @@ async def scan_uploaded_image(image: UploadFile = File(...)):
         with open(dest_path, "wb") as buffer:
             shutil.copyfileobj(image.file, buffer)
             
-        extraction = extractor.extract_from_image(dest_path)
+        extraction = extractor.extract_from_image(dest_path, client_ocr_json=ocr_json)
         extracted_data = extraction["extracted_data"]
         
         # Run Statutory Rule Engine

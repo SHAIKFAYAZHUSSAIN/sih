@@ -25,12 +25,16 @@ class LMPCExtractor:
         self._init_ocr()
 
     def _init_ocr(self):
+        # On Vercel serverless, skip local ONNX binary to prevent cold-start crashes
+        if os.environ.get("VERCEL"):
+            self.ocr_engine = None
+            return
         try:
             from rapidocr_onnxruntime import RapidOCR
             self.ocr_engine = RapidOCR()
             print("RapidOCR engine initialized successfully.")
         except Exception as e:
-            print(f"Warning: RapidOCR could not be loaded: {e}. Fallback parser active.")
+            print(f"Notice: Local RapidOCR not active ({e}). Client-side OCR active.")
             self.ocr_engine = None
 
     def _load_samples(self):
@@ -70,9 +74,9 @@ class LMPCExtractor:
             "bounding_boxes": sample.get("bounding_boxes", [])
         }
 
-    def extract_from_image(self, image_path: str) -> Dict[str, Any]:
+    def extract_from_image(self, image_path: str, client_ocr_json: Optional[str] = None) -> Dict[str, Any]:
         """
-        Analyzes an uploaded user package image using RapidOCR + Computer Vision
+        Analyzes an uploaded user package image using RapidOCR / Client OCR + Computer Vision
         morphological detection and statutory Key Information Extraction (KIE).
         """
         if not os.path.exists(image_path):
@@ -84,15 +88,31 @@ class LMPCExtractor:
             
         h, w = cv_img.shape[:2]
 
-        # 1. Execute RapidOCR if available
-        ocr_results = None
-        if self.ocr_engine is not None:
+        # 1. Check if client-side OCR (Tesseract.js) supplied extracted text and bounding boxes
+        ocr_results = []
+        if client_ocr_json:
             try:
-                ocr_results, _ = self.ocr_engine(cv_img)
+                client_items = json.loads(client_ocr_json)
+                for it in client_items:
+                    t = str(it.get("text", "")).strip()
+                    bx = it.get("box", [0, 0, 0, 0])
+                    conf = it.get("conf", 0.9)
+                    if t:
+                        pts = [[bx[0], bx[1]], [bx[2], bx[1]], [bx[2], bx[3]], [bx[0], bx[3]]]
+                        ocr_results.append([pts, t, conf])
             except Exception as e:
-                print(f"RapidOCR execution exception: {e}")
+                print(f"Notice: Failed parsing client OCR json: {e}")
 
-        # 2. Extract statutory fields and bounding boxes from OCR
+        # 2. Execute local RapidOCR if available and no client OCR was passed
+        if not ocr_results and self.ocr_engine is not None:
+            try:
+                res, _ = self.ocr_engine(cv_img)
+                if res:
+                    ocr_results = res
+            except Exception as e:
+                print(f"Notice: Local OCR inference exception: {e}")
+
+        # 3. Extract statutory fields and bounding boxes from OCR
         if ocr_results and len(ocr_results) > 0:
             extracted, bounding_boxes = self._parse_ocr_declarations(ocr_results, cv_img, h, w)
         else:
@@ -101,7 +121,7 @@ class LMPCExtractor:
             bounding_boxes = self._detect_morphological_boxes(gray, h, w)
             extracted = self._heuristic_label_parser(gray, h, w)
 
-        # 3. Base64 encode image for 100% reliable frontend rendering
+        # 4. Base64 encode image for 100% reliable frontend rendering
         data_url = self._get_image_base64_url(image_path)
         
         return {
