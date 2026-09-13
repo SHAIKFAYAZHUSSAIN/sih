@@ -1,0 +1,133 @@
+{
+  "id": "sample_01",
+  "title": "NutriBite Whole Wheat Biscuits",
+  "category": "Biscuits & Bakery",
+  "filename": "sample_01_compliant_snack.jpg",
+  "bg_color": [
+    254,
+    252,
+    246
+  ],
+  "border_color": [
+    16,
+    185,
+    129
+  ],
+  "details": [
+    [
+      "Generic Name / Commodity:",
+      "Crispy Whole Wheat Biscuits (Combination pack of 2)",
+      false
+    ],
+    [
+      "Manufactured & Packed By:",
+      "Sunbeam Confectioneries Pvt Ltd, Plot 14, Sector 18, Gurugram, Haryana 122015",
+      false
+    ],
+    [
+      "Country of Origin:",
+      "India",
+      false
+    ],
+    [
+      "Consumer Care / Grievance Redressal:",
+      "Manager - Consumer Care, Tel: 1800-208-9999, Email: feedback@sunbeamfoods.com",
+      false
+    ],
+    [
+      "Dimensions of Package:",
+      "Length: 18 cm, Width: 8 cm, Height: 5 cm",
+      false
+    ]
+  ],
+  "stamp": {
+    "coords": [
+      40,
+      520,
+      660,
+      710
+    ],
+    "lines": [
+      "BATCH NO: SB-2026/089",
+      "NET WEIGHT: 250 g",
+      "MFG DATE: 08/2026  \u2022  USE BY: 02/2027",
+      "MAX. RETAIL PRICE: Rs. 50.00 (inclusive of all taxes)",
+      "UNIT SALE PRICE: Rs. 0.20 per g"
+    ],
+    "draw_qr": false
+  },
+  "extracted_data": {
+    "commodity_name": "NutriBite Whole Wheat Biscuits",
+    "generic_name": "Crispy Whole Wheat Biscuits",
+    "category": "Biscuits & Bakery",
+    "manufacturer_name": "Sunbeam Confectioneries Pvt Ltd",
+    "manufacturer_address": "Plot 14, Sector 18, Gurugram, Haryana 122015",
+    "country_of_origin": "India",
+    "net_quantity_raw": "250 g",
+    "net_quantity_value": 250.0,
+    "net_quantity_unit": "g",
+    "mrp_raw": "Rs. 50.00 (inclusive of all taxes)",
+    "mrp_value": 50.0,
+    "unit_sale_price_raw": "Rs. 0.20 per g",
+    "unit_sale_price_value": 0.2,
+    "mfg_date": "08/2026",
+    "consumer_care_phone": "1800-208-9999",
+    "consumer_care_email": "feedback@sunbeamfoods.com",
+    "measured_numeral_height_mm": 2.2,
+    "measured_letter_height_mm": 1.4,
+    "has_qr_code": false
+  },
+  "bounding_boxes": [
+    {
+      "label": "Generic Name",
+      "box": [
+        40,
+        140,
+        600,
+        185
+      ],
+      "color": "#10b981"
+    },
+    {
+      "label": "Manufacturer Details",
+      "box": [
+        40,
+        200,
+        650,
+        255
+      ],
+      "color": "#10b981"
+    },
+    {
+      "label": "Country of Origin",
+      "box": [
+        40,
+        270,
+        250,
+        315
+      ],
+      "color": "#10b981"
+    },
+    {
+      "label": "Consumer Care",
+      "box": [
+        40,
+        330,
+        650,
+        385
+      ],
+      "color": "#10b981"
+    },
+    {
+      "label": "MRP & USP Stamp Box",
+      "box": [
+        40,
+        520,
+        660,
+        710
+      ],
+      "color": "#10b981"
+    }
+  ],
+  "image_rel_path": "/static/images/sample_01_compliant_snack.jpg"
+}

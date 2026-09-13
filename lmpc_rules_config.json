@@ -1,0 +1,230 @@
+{
+  "statutory_framework": {
+    "parent_act": "Legal Metrology Act, 2009 (1 of 2010)",
+    "principal_rules": "Legal Metrology (Packaged Commodities) Rules, 2011 (G.S.R. 202(E))",
+    "amendments_incorporated": [
+      {
+        "notification": "G.S.R. 779(E)",
+        "date": "2021-11-02",
+        "effective_date": "2022-04-01",
+        "title": "Legal Metrology (Packaged Commodities) Amendment Rules, 2021",
+        "key_impact": "Mandatory Unit Sale Price (USP) under Rule 6(11), omission of Rule 5 standard sizes, multi-pack promotional rule 4(2)"
+      },
+      {
+        "notification": "G.S.R. 577(E)",
+        "date": "2022-07-14",
+        "effective_date": "2022-07-14",
+        "title": "Legal Metrology (Packaged Commodities) (Second Amendment) Rules, 2022",
+        "key_impact": "QR Code declaration allowances for electronic products for address, generic name, dimensions, while keeping phone and email on physical package"
+      }
+    ]
+  },
+  "exemptions_rule_26_and_3": {
+    "weight_threshold_min": {
+      "value": 10.0,
+      "unit": "g/ml",
+      "rule": "Packages <= 10g or 10ml are exempt from these rules (except between 10g-20g which still require MRP and Net Qty)"
+    },
+    "weight_threshold_max": {
+      "value": 25.0,
+      "unit": "kg/l",
+      "rule": "Packages > 25kg or 25L are exempt (Rule 3), except cement and fertilizer bags up to 50kg"
+    },
+    "special_exemptions": [
+      "Fast food packed by restaurant or hotel",
+      "Drugs covered under Drugs (Price Control) Order, 1995",
+      "Agricultural farm produce in packages above 50kg",
+      "Packaged commodities meant for industrial or institutional consumers (direct consumption)"
+    ]
+  },
+  "mandatory_declarations_rule_6": {
+    "declarations": [
+      {
+        "id": "DECL_MANUFACTURER",
+        "rule_ref": "Rule 6(1)(a) & Rule 10",
+        "name": "Name and Complete Address of Manufacturer / Packer / Importer",
+        "required_fields": [
+          "name",
+          "premises_address",
+          "city",
+          "state",
+          "pin_code"
+        ],
+        "validation_logic": "Must contain company name and postal address with pin code. Shorter address permissible only if registered under Rule 28.",
+        "qr_code_allowed_for_electronics": true,
+        "qr_code_exception_note": "For electronic products, manufacturer name must remain on package, address can be via QR code."
+      },
+      {
+        "id": "DECL_COUNTRY_OF_ORIGIN",
+        "rule_ref": "Rule 6(1)(a) Explanation II & Rule 10(2)",
+        "name": "Country of Origin",
+        "validation_logic": "Mandatory for all imported goods; must declare 'Country of Origin: [Country]' or 'Made in [Country]'."
+      },
+      {
+        "id": "DECL_GENERIC_NAME",
+        "rule_ref": "Rule 6(1)(b)",
+        "name": "Common or Generic Name of Commodity",
+        "validation_logic": "Must state the generic/common name. If multi-product package, must state each product name with number or quantity.",
+        "qr_code_allowed_for_electronics": true
+      },
+      {
+        "id": "DECL_NET_QUANTITY",
+        "rule_ref": "Rule 6(1)(c), Rule 11, Rule 12, Rule 13",
+        "name": "Net Quantity in Standard SI Units",
+        "allowed_units": ["g", "kg", "ml", "l", "m", "cm", "mm", "N", "U"],
+        "illegal_unit_symbols": ["gms", "gm", "kgr", "kilo", "ltr", "ltrs", "ml.", "doz", "dozen", "gross"],
+        "prohibited_expressions": [
+          "minimum",
+          "not less than",
+          "approximate",
+          "approx",
+          "average",
+          "when packed"
+        ],
+        "validation_logic": "Standard SI symbols only. Quantity cannot be qualified with deceptive/approximating words (Rule 12(6))."
+      },
+      {
+        "id": "DECL_DATE",
+        "rule_ref": "Rule 6(1)(d)",
+        "name": "Month and Year of Manufacture / Packing / Import",
+        "allowed_formats": [
+          "MM/YYYY",
+          "MM/YY",
+          "Month YYYY",
+          "MMM YYYY"
+        ],
+        "validation_logic": "Month and year must be explicitly stated. Date of manufacture/packing cannot be a future date compared to inspection date."
+      },
+      {
+        "id": "DECL_MRP",
+        "rule_ref": "Rule 6(1)(e)",
+        "name": "Maximum Retail Price (MRP)",
+        "required_syntax_patterns": [
+          "MRP Rs. XX (incl. of all taxes)",
+          "MRP ₹ XX (inclusive of all taxes)",
+          "Maximum Retail Price Rs. XX (inclusive of all taxes)",
+          "MRP Rs. XX.XX incl. of all taxes"
+        ],
+        "validation_logic": "Must be in Indian currency. Must explicitly state 'inclusive of all taxes' or 'incl. of all taxes'. Rounding off rules apply."
+      },
+      {
+        "id": "DECL_UNIT_SALE_PRICE",
+        "rule_ref": "Rule 6(11) (Inserted via 2021 Amendment G.S.R. 779(E))",
+        "name": "Unit Sale Price (USP)",
+        "mandatory_conditions": {
+          "weight_under_1kg": "Rs. __ per g",
+          "weight_equal_or_above_1kg": "Rs. __ per kg",
+          "volume_under_1litre": "Rs. __ per ml",
+          "volume_equal_or_above_1litre": "Rs. __ per litre",
+          "length_under_1metre": "Rs. __ per cm",
+          "length_equal_or_above_1metre": "Rs. __ per meter",
+          "by_number": "Rs. __ per number or per piece / per unit"
+        },
+        "mathematical_tolerance_percent": 1.0,
+        "validation_logic": "Mandatory across all applicable packages. Printed USP must equal MRP divided by Net Quantity within tolerance."
+      },
+      {
+        "id": "DECL_CONSUMER_CARE",
+        "rule_ref": "Rule 6(2)",
+        "name": "Consumer Care / Grievance Redressal Details",
+        "required_channels": [
+          "name_or_office",
+          "postal_address",
+          "telephone_number",
+          "email_address"
+        ],
+        "validation_logic": "Must declare name/designation of grievance contact, complete postal address, telephone/helpline number, and email address. For electronics with QR code, telephone and email MUST still be on the physical package itself."
+      },
+      {
+        "id": "DECL_DIMENSIONS",
+        "rule_ref": "Rule 6(1)(f), Rule 14, Rule 15, Rule 17",
+        "name": "Dimensions / Size of Commodity",
+        "applicability": "Mandatory for textiles, bedsheets, hosiery, cables, containers, bags sold by dimensions or size.",
+        "qr_code_allowed_for_electronics": true
+      }
+    ]
+  },
+  "font_size_and_pdp_schedule_II": {
+    "description": "Rule 7 & Schedule II - Minimum height of numerals and letters based on Net Quantity and Area of Principal Display Panel",
+    "letter_height_general_rule": {
+      "min_height_normal_mm": 1.0,
+      "min_height_blown_molded_mm": 2.0,
+      "min_width_to_height_ratio": "1/3 (except numeral 1, letters i, I, l)"
+    },
+    "numeral_height_table_I_by_weight_volume": [
+      {
+        "range_desc": "Up to 200g / 200ml",
+        "min_qty": 0,
+        "max_qty": 200,
+        "min_numeral_height_normal_mm": 1.0,
+        "min_numeral_height_blown_molded_mm": 2.0
+      },
+      {
+        "range_desc": "Above 200g/ml up to 500g/ml",
+        "min_qty": 201,
+        "max_qty": 500,
+        "min_numeral_height_normal_mm": 2.0,
+        "min_numeral_height_blown_molded_mm": 4.0
+      },
+      {
+        "range_desc": "Above 500g / 500ml",
+        "min_qty": 501,
+        "max_qty": null,
+        "min_numeral_height_normal_mm": 4.0,
+        "min_numeral_height_blown_molded_mm": 6.0
+      }
+    ],
+    "numeral_height_table_II_by_pdp_area": [
+      {
+        "range_desc": "Up to 100 cm²",
+        "min_area_cm2": 0,
+        "max_area_cm2": 100,
+        "min_numeral_height_normal_mm": 1.0,
+        "min_numeral_height_blown_molded_mm": 2.0
+      },
+      {
+        "range_desc": "Above 100 cm² up to 500 cm²",
+        "min_area_cm2": 101,
+        "max_area_cm2": 500,
+        "min_numeral_height_normal_mm": 2.0,
+        "min_numeral_height_blown_molded_mm": 4.0
+      },
+      {
+        "range_desc": "Above 500 cm² up to 2500 cm²",
+        "min_area_cm2": 501,
+        "max_area_cm2": 2500,
+        "min_numeral_height_normal_mm": 4.0,
+        "min_numeral_height_blown_molded_mm": 6.0
+      },
+      {
+        "range_desc": "Above 2500 cm²",
+        "min_area_cm2": 2501,
+        "max_area_cm2": null,
+        "min_numeral_height_normal_mm": 6.0,
+        "min_numeral_height_blown_molded_mm": 6.0
+      }
+    ]
+  },
+  "placement_and_display_rules_8_and_9": {
+    "clear_surrounding_space_rule_8": {
+      "top_and_bottom_clearance": "Space equal to at least the height of the numeral declaration",
+      "left_and_right_clearance": "Space equal to at least twice the height of the numeral declaration"
+    },
+    "contrast_and_legibility_rule_9": {
+      "contrast_requirement": "Printed, painted or inscribed in a color that contrasts conspicuously with the background of the label",
+      "prominence": "Must be distinct, prominent, and legible (cannot require reading through liquids or transparent packaging)"
+    },
+    "language_rule_9_4": {
+      "permitted_primary_languages": [
+        "Hindi in Devanagari script",
+        "English"
+      ],
+      "additional_languages": "Any other language is permitted as an additional translation"
+    }
+  },
+  "stickering_and_alteration_rule_6_3_and_18_5": {
+    "prohibition_of_stickers": "Affixing individual stickers to alter or make statutory declarations is strictly prohibited (Rule 6(3))",
+    "sole_exception": "A sticker is allowed ONLY for reducing the MRP (providing a lower revised price) without obscuring the manufacturer's original declaration",
+    "obliteration_penalty": "Smudging, obscuring, or altering the retail sale price is punishable under Rule 18(5) and Section 36"
+  }
+}

@@ -1,0 +1,113 @@
+{
+  "id": "sample_03",
+  "title": "AquaPure Natural Spring Water",
+  "category": "Beverages",
+  "filename": "sample_03_missing_usp_beverage.jpg",
+  "bg_color": [
+    240,
+    249,
+    255
+  ],
+  "border_color": [
+    239,
+    68,
+    68
+  ],
+  "details": [
+    [
+      "Generic Name / Commodity:",
+      "Natural Mineral Water",
+      false
+    ],
+    [
+      "Packer & Bottler:",
+      "Himalayan Spring Bottlers Ltd, Solan, Himachal Pradesh 173212",
+      false
+    ],
+    [
+      "Country of Origin:",
+      "India",
+      false
+    ],
+    [
+      "Consumer Care:",
+      "Email: contact@aquapure.co.in (NO PHONE NUMBER PROVIDED!)",
+      true
+    ],
+    [
+      "Recycling Info:",
+      "100% Recyclable PET Container",
+      false
+    ]
+  ],
+  "stamp": {
+    "coords": [
+      40,
+      520,
+      660,
+      690
+    ],
+    "lines": [
+      "BATCH NO: AQ-091",
+      "NET VOLUME: 1 L",
+      "DATE OF PACKING: 08/2026",
+      "MRP: Rs. 30.00 (inclusive of all taxes)",
+      "*** UNIT SALE PRICE NOT DECLARED ***"
+    ],
+    "draw_qr": false
+  },
+  "extracted_data": {
+    "commodity_name": "AquaPure Natural Spring Water",
+    "generic_name": "Natural Mineral Water",
+    "category": "Beverages",
+    "manufacturer_name": "Himalayan Spring Bottlers Ltd",
+    "manufacturer_address": "Solan, Himachal Pradesh 173212",
+    "country_of_origin": "India",
+    "net_quantity_raw": "1 L",
+    "net_quantity_value": 1.0,
+    "net_quantity_unit": "L",
+    "mrp_raw": "Rs. 30.00 (inclusive of all taxes)",
+    "mrp_value": 30.0,
+    "unit_sale_price_raw": "",
+    "unit_sale_price_value": null,
+    "mfg_date": "08/2026",
+    "consumer_care_phone": "",
+    "consumer_care_email": "contact@aquapure.co.in",
+    "measured_numeral_height_mm": 4.5,
+    "measured_letter_height_mm": 1.5,
+    "has_qr_code": false
+  },
+  "bounding_boxes": [
+    {
+      "label": "Generic Name",
+      "box": [
+        40,
+        140,
+        600,
+        185
+      ],
+      "color": "#10b981"
+    },
+    {
+      "label": "VIOLATION: Incomplete Consumer Care",
+      "box": [
+        40,
+        330,
+        650,
+        385
+      ],
+      "color": "#ef4444"
+    },
+    {
+      "label": "VIOLATION: Missing Unit Sale Price",
+      "box": [
+        40,
+        520,
+        660,
+        690
+      ],
+      "color": "#ef4444"
+    }
+  ],
+  "image_rel_path": "/static/images/sample_03_missing_usp_beverage.jpg"
+}

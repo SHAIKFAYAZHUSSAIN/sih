@@ -1,0 +1,109 @@
+{
+  "id": "sample_05",
+  "title": "SoundMax True Wireless Earbuds",
+  "category": "Consumer Electronics",
+  "filename": "sample_05_qr_code_electronics.jpg",
+  "bg_color": [
+    248,
+    250,
+    252
+  ],
+  "border_color": [
+    59,
+    130,
+    246
+  ],
+  "details": [
+    [
+      "Manufacturer Name (Physical):",
+      "Apex Audio Technologies Pvt Ltd",
+      false
+    ],
+    [
+      "Statutory QR Code Declaration:",
+      "Scan QR code for complete factory address, technical specifications and size.",
+      false
+    ],
+    [
+      "Consumer Helpline (Physical as per G.S.R. 577(E)):",
+      "Toll Free: 1800-112-9900, Email: support@apexaudio.in",
+      false
+    ],
+    [
+      "Package Contents:",
+      "Earbuds (1 Pair), Charging Case (1 U), USB-C Cable (1 U)",
+      false
+    ]
+  ],
+  "stamp": {
+    "coords": [
+      40,
+      480,
+      500,
+      680
+    ],
+    "lines": [
+      "MODEL NO: SM-ANC20",
+      "NET QUANTITY: 1 U",
+      "MFG DATE: 08/2026",
+      "MRP: Rs. 1499.00 (inclusive of all taxes)",
+      "UNIT SALE PRICE: Rs. 1499.00 per number"
+    ],
+    "draw_qr": true
+  },
+  "extracted_data": {
+    "commodity_name": "SoundMax True Wireless Earbuds",
+    "generic_name": "True Wireless Earbuds",
+    "category": "Consumer Electronics",
+    "manufacturer_name": "Apex Audio Technologies Pvt Ltd",
+    "manufacturer_address": "",
+    "country_of_origin": "India",
+    "net_quantity_raw": "1 U",
+    "net_quantity_value": 1.0,
+    "net_quantity_unit": "U",
+    "mrp_raw": "Rs. 1499.00 (inclusive of all taxes)",
+    "mrp_value": 1499.0,
+    "unit_sale_price_raw": "Rs. 1499.00 per number",
+    "unit_sale_price_value": 1499.0,
+    "mfg_date": "08/2026",
+    "consumer_care_phone": "1800-112-9900",
+    "consumer_care_email": "support@apexaudio.in",
+    "measured_numeral_height_mm": 2.0,
+    "measured_letter_height_mm": 1.2,
+    "has_qr_code": true,
+    "qr_scan_instruction": "Scan QR code for complete factory address and specifications."
+  },
+  "bounding_boxes": [
+    {
+      "label": "Manufacturer Name",
+      "box": [
+        40,
+        140,
+        500,
+        185
+      ],
+      "color": "#3b82f6"
+    },
+    {
+      "label": "Mandatory Physical Contact",
+      "box": [
+        40,
+        270,
+        650,
+        320
+      ],
+      "color": "#10b981"
+    },
+    {
+      "label": "Scannable QR Code",
+      "box": [
+        520,
+        710,
+        660,
+        850
+      ],
+      "color": "#3b82f6"
+    }
+  ],
+  "image_rel_path": "/static/images/sample_05_qr_code_electronics.jpg"
+}

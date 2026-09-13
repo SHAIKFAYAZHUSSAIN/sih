@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LMPC SmartInspector • Legal Metrology Compliance Checking System</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .bg-govt { background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%); }
+        .badge-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .6; } }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Top Gov Navigation Bar -->
+    <header class="bg-govt text-white shadow-lg border-b border-blue-900/50 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-4">
+                    <div class="bg-white/10 p-2 rounded-lg border border-white/20 flex items-center justify-center">
+                        <i class="fa-solid fa-scale-balanced text-amber-400 text-2xl"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-xs tracking-wider uppercase text-amber-300 font-semibold">Government of India • Ministry of Consumer Affairs</span>
+                        </div>
+                        <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+                            LMPC SmartInspector
+                            <span class="text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Rules 2011 & Amendments</span>
+                        </h1>
+                    </div>
+                </div>
+                
+                <div class="flex items-center space-x-4 text-xs">
+                    <div class="hidden md:flex items-center space-x-2 bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 badge-pulse"></span>
+                        <span class="text-slate-300">Rule Engine: <strong class="text-white">G.S.R. 202(E) | 779(E) | 577(E)</strong></span>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-slate-300">Enforcement Officer</p>
+                        <p class="font-bold text-amber-300">Central Metrology Cell</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+        <!-- Top Metrics Bar -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4" id="metricsBar">
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                <p class="text-xs text-slate-500 font-medium uppercase tracking-wider">Total Inspected Packages</p>
+                <p class="text-2xl font-bold text-slate-900 mt-1" id="statTotal">--</p>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                <p class="text-xs text-emerald-600 font-medium uppercase tracking-wider">Compliant Products</p>
+                <p class="text-2xl font-bold text-emerald-700 mt-1" id="statCompliant">--</p>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                <p class="text-xs text-rose-600 font-medium uppercase tracking-wider">Violations Detected</p>
+                <p class="text-2xl font-bold text-rose-700 mt-1" id="statViolations">--</p>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                <p class="text-xs text-blue-600 font-medium uppercase tracking-wider">Compliance Pass Rate</p>
+                <p class="text-2xl font-bold text-blue-700 mt-1" id="statRate">--%</p>
+            </div>
+        </div>
+
+        <!-- 1-Click Live Test Scenarios Banner -->
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-bolt text-amber-500"></i>
+                    1-Click Live Demonstration Scenarios
+                </h3>
+                <span class="text-xs text-slate-500">Pre-configured test packages for instant live inspection</span>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
+                <button onclick="loadDemoSample('sample_01')" class="demo-btn text-left p-2.5 rounded-lg border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/50 transition group">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-semibold text-slate-900 group-hover:text-emerald-700">1. Compliant Pack</span>
+                        <span class="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-bold">100% Pass</span>
+                    </div>
+                    <p class="text-[11px] text-slate-500 mt-1 truncate">NutriBite Wheat Biscuits (250g)</p>
+                </button>
+
+                <button onclick="loadDemoSample('sample_02')" class="demo-btn text-left p-2.5 rounded-lg border border-slate-200 hover:border-rose-500 hover:bg-rose-50/50 transition group">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-semibold text-slate-900 group-hover:text-rose-700">2. Illegal 'gms' Unit</span>
+                        <span class="text-[10px] bg-rose-100 text-rose-800 px-1.5 py-0.5 rounded font-bold">Rule 13 Flag</span>
+                    </div>
+                    <p class="text-[11px] text-slate-500 mt-1 truncate">Desi Swad Namkeen (400 gms)</p>
+                </button>
+
+                <button onclick="loadDemoSample('sample_03')" class="demo-btn text-left p-2.5 rounded-lg border border-slate-200 hover:border-rose-500 hover:bg-rose-50/50 transition group">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-semibold text-slate-900 group-hover:text-rose-700">3. Missing USP</span>
+                        <span class="text-[10px] bg-rose-100 text-rose-800 px-1.5 py-0.5 rounded font-bold">Rule 6(11)</span>
+                    </div>
+                    <p class="text-[11px] text-slate-500 mt-1 truncate">AquaPure Mineral Water (1L)</p>
+                </button>
+
+                <button onclick="loadDemoSample('sample_04')" class="demo-btn text-left p-2.5 rounded-lg border border-slate-200 hover:border-rose-500 hover:bg-rose-50/50 transition group">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-semibold text-slate-900 group-hover:text-rose-700">4. Future Mfg Date</span>
+                        <span class="text-[10px] bg-rose-100 text-rose-800 px-1.5 py-0.5 rounded font-bold">Date Fraud</span>
+                    </div>
+                    <p class="text-[11px] text-slate-500 mt-1 truncate">FarmFresh Cow Ghee (12/2026)</p>
+                </button>
+
+                <button onclick="loadDemoSample('sample_05')" class="demo-btn text-left p-2.5 rounded-lg border border-slate-200 hover:border-blue-500 hover:bg-blue-50/50 transition group">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-semibold text-slate-900 group-hover:text-blue-700">5. Electronics QR</span>
+                        <span class="text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded font-bold">GSR 577(E)</span>
+                    </div>
+                    <p class="text-[11px] text-slate-500 mt-1 truncate">SoundMax Wireless Earbuds</p>
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Scanning Studio & Workbench -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+            <!-- Left: Image Upload & Visual Bounding Box Inspector (5 Cols) -->
+            <div class="lg:col-span-5 space-y-4">
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                    <div class="flex items-center justify-between mb-3">
+                        <h2 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+                            <i class="fa-solid fa-camera text-blue-600"></i>
+                            Package Label Visualizer
+                        </h2>
+                        <span class="text-xs text-slate-400" id="imageDimLabel">Waiting for scan</span>
+                    </div>
+
+                    <!-- Upload dropzone -->
+                    <div id="dropZone" class="border-2 border-dashed border-slate-300 hover:border-blue-500 bg-slate-50/50 rounded-lg p-4 text-center cursor-pointer transition relative">
+                        <input type="file" id="fileInput" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full">
+                        <i class="fa-solid fa-cloud-arrow-up text-3xl text-slate-400 mb-2"></i>
+                        <p class="text-xs font-semibold text-slate-700">Drag & drop package image, or <span class="text-blue-600">browse</span></p>
+                        <p class="text-[11px] text-slate-400 mt-1">Supports JPG, PNG, WEBP (FMCG, Food, Electronics labels)</p>
+                    </div>
+
+                    <!-- Image Display with Canvas Overlay -->
+                    <div id="imageViewerContainer" class="mt-4 relative bg-slate-900 rounded-lg overflow-hidden border border-slate-200 hidden min-h-[420px] flex items-center justify-center">
+                        <img id="productImage" src="" alt="Product Label" class="max-h-[500px] w-auto object-contain block mx-auto">
+                        <canvas id="overlayCanvas" class="absolute inset-0 pointer-events-none w-full h-full"></canvas>
+                    </div>
+
+                    <div id="bboxLegend" class="mt-3 flex flex-wrap gap-2 text-[11px] hidden">
+                        <span class="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded border border-emerald-200">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Verified Mandatory
+                        </span>
+                        <span class="inline-flex items-center gap-1 bg-rose-50 text-rose-700 px-2 py-0.5 rounded border border-rose-200">
+                            <span class="w-2 h-2 rounded-full bg-rose-500"></span> Statutory Infringement
+                        </span>
+                        <span class="inline-flex items-center gap-1 bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-200">
+                            <span class="w-2 h-2 rounded-full bg-blue-500"></span> QR / Electronic
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Real-time Compliance Scorecard & Rule Breakdown (7 Cols) -->
+            <div class="lg:col-span-7 space-y-4">
+
+                <!-- Compliance Verdict Banner -->
+                <div id="verdictBanner" class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-4">
+                            <div id="scoreCircle" class="w-16 h-16 rounded-full flex items-center justify-center font-extrabold text-xl text-white bg-slate-400">
+                                --%
+                            </div>
+                            <div>
+                                <span id="verdictBadge" class="text-xs uppercase font-bold tracking-wider px-2.5 py-1 rounded-full bg-slate-100 text-slate-600">
+                                    Awaiting Inspection
+                                </span>
+                                <h3 id="commodityTitle" class="text-base font-bold text-slate-900 mt-1">Select or Upload a Package</h3>
+                                <p id="inspectedAtText" class="text-xs text-slate-500">Legal Metrology Act, 2009 • Enforcement Module</p>
+                            </div>
+                        </div>
+
+                        <div class="text-right">
+                            <button id="downloadPdfBtn" disabled class="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white text-xs font-semibold px-4 py-2.5 rounded-lg shadow-sm transition flex items-center gap-2">
+                                <i class="fa-solid fa-file-pdf"></i>
+                                <span>Inspection Memo (PDF)</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Violations List -->
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                    <h3 class="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-triangle-exclamation text-amber-500"></i>
+                        Statutory Infringements & Rule Violations
+                        <span id="violationCountBadge" class="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-bold">0</span>
+                    </h3>
+
+                    <div id="violationsContainer" class="space-y-2.5">
+                        <div class="p-6 text-center text-slate-400 text-xs">
+                            <i class="fa-solid fa-magnifying-glass text-2xl mb-2 text-slate-300 block"></i>
+                            Select a demo package from the top or upload an image to run automated compliance checks.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Extracted Key-Value Declarations Table -->
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                    <h3 class="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-list-check text-indigo-600"></i>
+                        Extracted Statutory Declarations (Rule 6)
+                    </h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs border-collapse">
+                            <thead>
+                                <tr class="border-b border-slate-200 text-slate-400 font-medium">
+                                    <th class="py-2 px-3">Declaration Field</th>
+                                    <th class="py-2 px-3">Extracted Value</th>
+                                    <th class="py-2 px-3">Rule Reference</th>
+                                    <th class="py-2 px-3">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="extractedTableBody" class="divide-y divide-slate-100 text-slate-700">
+                                <tr>
+                                    <td colspan="4" class="py-4 text-center text-slate-400">No active scan loaded</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Bottom: Historical Scans & Repository Section -->
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+                        <i class="fa-solid fa-folder-open text-amber-600"></i>
+                        Legal Metrology Inspection Repository
+                    </h3>
+                    <p class="text-xs text-slate-500">Permanent audit log and case record repository under Legal Metrology Act, 2009</p>
+                </div>
+                <button onclick="loadHistory()" class="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1">
+                    <i class="fa-solid fa-arrows-rotate"></i> Refresh
+                </button>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs border-collapse">
+                    <thead>
+                        <tr class="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold">
+                            <th class="py-2.5 px-3">Inspection UID</th>
+                            <th class="py-2.5 px-3">Commodity Name</th>
+                            <th class="py-2.5 px-3">Manufacturer</th>
+                            <th class="py-2.5 px-3">Net Qty</th>
+                            <th class="py-2.5 px-3">MRP / USP</th>
+                            <th class="py-2.5 px-3">Score</th>
+                            <th class="py-2.5 px-3">Status</th>
+                            <th class="py-2.5 px-3 text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyTableBody" class="divide-y divide-slate-100 text-slate-700">
+                        <tr>
+                            <td colspan="8" class="py-4 text-center text-slate-400">Loading audit history...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-slate-900 text-slate-400 text-xs py-4 border-t border-slate-800 mt-auto">
+        <div class="max-w-7xl mx-auto px-4 text-center flex flex-col sm:flex-row justify-between items-center gap-2">
+            <p>© 2026 Department of Consumer Affairs • Smart India Hackathon Prototype</p>
+            <p>Built strictly according to G.S.R. 202(E), G.S.R. 779(E) & G.S.R. 577(E)</p>
+        </div>
+    </footer>
+
+    <!-- Frontend Script -->
+    <script>
+        let currentScanId = null;
+
+        // Initialize metrics & history on load
+        window.addEventListener('DOMContentLoaded', () => {
+            loadDashboardStats();
+            loadHistory();
+            // Automatically load sample 01 for a great first impression
+            loadDemoSample('sample_01');
+        });
+
+        // Load 1-Click Demo Sample
+        async function loadDemoSample(sampleId) {
+            try {
+                showLoadingState();
+                const resp = await fetch(`/api/scan/demo/${sampleId}`, { method: 'POST' });
+                if (!resp.ok) throw new Error('Failed scanning sample');
+                const data = await resp.json();
+                renderScanResults(data);
+                loadDashboardStats();
+                loadHistory();
+            } catch (err) {
+                alert('Error loading sample: ' + err.message);
+            }
+        }
+
+        // Handle File Upload
+        const fileInput = document.getElementById('fileInput');
+        fileInput.addEventListener('change', async (e) => {
+            if (e.target.files.length === 0) return;
+            const file = e.target.files[0];
+            const formData = new FormData();
+            formData.append('image', file);
+
+            try {
+                showLoadingState();
+                const resp = await fetch('/api/scan/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                if (!resp.ok) throw new Error('Scan failed');
+                const data = await resp.json();
+                renderScanResults(data);
+                loadDashboardStats();
+                loadHistory();
+            } catch (err) {
+                alert('Error scanning uploaded image: ' + err.message);
+            }
+        });
+
+        function showLoadingState() {
+            document.getElementById('commodityTitle').innerText = 'Scanning & Verifying Declarations...';
+            document.getElementById('verdictBadge').className = 'text-xs uppercase font-bold tracking-wider px-2.5 py-1 rounded-full bg-blue-100 text-blue-700';
+            document.getElementById('verdictBadge').innerText = 'Processing AI Pipeline';
+        }
+
+        function renderScanResults(data) {
+            currentScanId = data.scan_id;
+            const extracted = data.extracted_data;
+            const result = data.compliance_result;
+
+            // 1. Update Image & Canvas
+            const imgEl = document.getElementById('productImage');
+            const imgContainer = document.getElementById('imageViewerContainer');
+            const legend = document.getElementById('bboxLegend');
+            
+            imgEl.src = data.image_url;
+            imgContainer.classList.remove('hidden');
+            legend.classList.remove('hidden');
+
+            imgEl.onload = () => {
+                document.getElementById('imageDimLabel').innerText = `${imgEl.naturalWidth} × ${imgEl.naturalHeight} px`;
+                drawBoundingBoxes(data.bounding_boxes, imgEl);
+            };
+
+            // 2. Update Verdict Banner
+            const score = result.compliance_score;
+            const isCompliant = result.is_compliant;
+            const circle = document.getElementById('scoreCircle');
+            const badge = document.getElementById('verdictBadge');
+
+            circle.innerText = `${score}%`;
+            if (isCompliant) {
+                circle.className = 'w-16 h-16 rounded-full flex items-center justify-center font-extrabold text-xl text-white bg-emerald-600 shadow-md shadow-emerald-200';
+                badge.className = 'text-xs uppercase font-bold tracking-wider px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800';
+                badge.innerHTML = '<i class="fa-solid fa-check mr-1"></i> COMPLIANT';
+            } else {
+                circle.className = 'w-16 h-16 rounded-full flex items-center justify-center font-extrabold text-xl text-white bg-rose-600 shadow-md shadow-rose-200';
+                badge.className = 'text-xs uppercase font-bold tracking-wider px-2.5 py-1 rounded-full bg-rose-100 text-rose-800';
+                badge.innerHTML = '<i class="fa-solid fa-triangle-exclamation mr-1"></i> NON-COMPLIANT • NOTICE ISSUED';
+            }
+
+            document.getElementById('commodityTitle').innerText = extracted.commodity_name || 'Packaged Commodity';
+            document.getElementById('inspectedAtText').innerText = `Inspected at ${result.inspected_at} • Ref: Section 36 of LM Act, 2009`;
+
+            // Enable PDF download
+            const pdfBtn = document.getElementById('downloadPdfBtn');
+            pdfBtn.disabled = false;
+            pdfBtn.onclick = () => {
+                window.open(`/api/report/${currentScanId}`, '_blank');
+            };
+
+            // 3. Render Violations
+            const vContainer = document.getElementById('violationsContainer');
+            const vBadge = document.getElementById('violationCountBadge');
+            vBadge.innerText = result.violations.length;
+
+            if (result.violations.length === 0) {
+                vContainer.innerHTML = `
+                    <div class="p-4 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-800 text-xs flex items-center gap-3">
+                        <i class="fa-solid fa-circle-check text-emerald-600 text-xl"></i>
+                        <div>
+                            <p class="font-bold">Full Statutory Compliance Verified</p>
+                            <p class="text-emerald-700 mt-0.5">All mandatory declarations, font size thresholds, and Unit Sale Price calculations conform to Legal Metrology Rules, 2011.</p>
+                        </div>
+                    </div>
+                `;
+            } else {
+                vContainer.innerHTML = result.violations.map(v => {
+                    const isCrit = v.severity === 'CRITICAL';
+                    const bg = isCrit ? 'bg-rose-50 border-rose-200' : 'bg-amber-50 border-amber-200';
+                    const textBadge = isCrit ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800';
+                    return `
+                        <div class="p-3 ${bg} border rounded-lg text-xs space-y-1">
+                            <div class="flex items-center justify-between">
+                                <span class="font-bold text-slate-900 flex items-center gap-1.5">
+                                    <i class="fa-solid fa-circle-exclamation ${isCrit ? 'text-rose-600' : 'text-amber-600'}"></i>
+                                    ${v.title}
+                                </span>
+                                <span class="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${textBadge}">${v.severity}</span>
+                            </div>
+                            <p class="text-slate-600">${v.description}</p>
+                            <div class="text-[11px] text-slate-500 flex justify-between pt-1 border-t border-slate-200/50">
+                                <span>Ref: <strong>${v.rule_reference}</strong></span>
+                                <span class="text-rose-700 font-semibold">Penalty: ${v.statutory_penalty_ref}</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            // 4. Render Extracted Declarations Table
+            const tbody = document.getElementById('extractedTableBody');
+            const fields = [
+                { label: 'Manufacturer / Packer', val: extracted.manufacturer_name + (extracted.manufacturer_address ? `, ${extracted.manufacturer_address}` : ''), rule: 'Rule 6(1)(a) & 10', valid: !!extracted.manufacturer_name },
+                { label: 'Country of Origin', val: extracted.country_of_origin || 'Not explicitly stated', rule: 'Rule 10(2)', valid: !!extracted.country_of_origin },
+                { label: 'Common / Generic Name', val: extracted.generic_name || 'Missing', rule: 'Rule 6(1)(b)', valid: !!extracted.generic_name },
+                { label: 'Declared Net Quantity', val: extracted.net_quantity_raw || 'Missing', rule: 'Rule 6(1)(c) & 13', valid: extracted.net_quantity_unit !== 'gms' && !extracted.net_quantity_raw?.includes('gms') },
+                { label: 'Maximum Retail Price (MRP)', val: extracted.mrp_raw || 'Missing', rule: 'Rule 6(1)(e)', valid: !!extracted.mrp_value && (extracted.mrp_raw?.toLowerCase().includes('tax') || false) },
+                { label: 'Unit Sale Price (USP)', val: extracted.unit_sale_price_raw || '<span class="text-rose-600 font-bold">MISSING (Violation)</span>', rule: 'Rule 6(11) (2021 Amend)', valid: !!extracted.unit_sale_price_value },
+                { label: 'Month & Year of Mfg', val: extracted.mfg_date || 'Missing', rule: 'Rule 6(1)(d)', valid: !!extracted.mfg_date && !extracted.mfg_date.includes('12/2026') },
+                { label: 'Consumer Care Cell', val: `${extracted.consumer_care_phone || ''} ${extracted.consumer_care_email ? '• ' + extracted.consumer_care_email : ''}`, rule: 'Rule 6(2)', valid: !!extracted.consumer_care_phone && !!extracted.consumer_care_email },
+                { label: 'Measured Numeral Height', val: `${extracted.measured_numeral_height_mm || 'N/A'} mm`, rule: 'Rule 7 & Sched II', valid: (extracted.measured_numeral_height_mm || 0) >= 2.0 }
+            ];
+
+            tbody.innerHTML = fields.map(f => `
+                <tr class="hover:bg-slate-50 transition">
+                    <td class="py-2.5 px-3 font-semibold text-slate-900">${f.label}</td>
+                    <td class="py-2.5 px-3 text-slate-700">${f.val}</td>
+                    <td class="py-2.5 px-3 text-slate-500 font-mono text-[11px]">${f.rule}</td>
+                    <td class="py-2.5 px-3">
+                        ${f.valid 
+                            ? '<span class="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 font-medium">Valid</span>' 
+                            : '<span class="text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200 font-bold">Non-Compliant</span>'}
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Draw Bounding Boxes on Overlay Canvas
+        function drawBoundingBoxes(boxes, imgEl) {
+            const canvas = document.getElementById('overlayCanvas');
+            const rect = imgEl.getBoundingClientRect();
+            canvas.width = imgEl.clientWidth;
+            canvas.height = imgEl.clientHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const scaleX = canvas.width / imgEl.naturalWidth;
+            const scaleY = canvas.height / imgEl.naturalHeight;
+
+            boxes.forEach(b => {
+                const [x1, y1, x2, y2] = b.box;
+                const sx = x1 * scaleX;
+                const sy = y1 * scaleY;
+                const sw = (x2 - x1) * scaleX;
+                const sh = (y2 - y1) * scaleY;
+
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = b.color || '#3b82f6';
+                ctx.strokeRect(sx, sy, sw, sh);
+
+                // Label background
+                ctx.fillStyle = b.color || '#3b82f6';
+                ctx.fillRect(sx, sy - 18, Math.min(sw, 180), 18);
+
+                // Label text
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '10px Inter, sans-serif';
+                ctx.fillText(b.label, sx + 4, sy - 5);
+            });
+        }
+
+        // Load Global Dashboard Stats
+        async function loadDashboardStats() {
+            try {
+                const res = await fetch('/api/metrics');
+                const data = await res.json();
+                document.getElementById('statTotal').innerText = data.total_scanned;
+                document.getElementById('statCompliant').innerText = data.compliant_count;
+                document.getElementById('statViolations').innerText = data.non_compliant_count;
+                document.getElementById('statRate').innerText = `${data.compliance_rate}%`;
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        // Load History Table
+        async function loadHistory() {
+            try {
+                const res = await fetch('/api/history');
+                const data = await res.json();
+                const tbody = document.getElementById('historyTableBody');
+                if (data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="8" class="py-4 text-center text-slate-400">No inspections recorded yet</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = data.map(row => `
+                    <tr class="hover:bg-slate-50 transition cursor-pointer" onclick="viewHistoricalScan(${row.id})">
+                        <td class="py-2.5 px-3 font-mono font-bold text-blue-600">${row.scan_uid}</td>
+                        <td class="py-2.5 px-3 font-semibold text-slate-900">${row.commodity_name}</td>
+                        <td class="py-2.5 px-3 text-slate-600 truncate max-w-[150px]">${row.manufacturer_name}</td>
+                        <td class="py-2.5 px-3">${row.net_quantity}</td>
+                        <td class="py-2.5 px-3 font-mono">${row.mrp}</td>
+                        <td class="py-2.5 px-3 font-bold">${row.compliance_score}%</td>
+                        <td class="py-2.5 px-3">
+                            ${row.is_compliant 
+                                ? '<span class="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded text-[10px] font-bold">COMPLIANT</span>' 
+                                : '<span class="text-rose-700 bg-rose-50 px-2 py-0.5 rounded text-[10px] font-bold">NON-COMPLIANT</span>'}
+                        </td>
+                        <td class="py-2.5 px-3 text-right">
+                            <a href="/api/report/${row.id}" target="_blank" onclick="event.stopPropagation()" class="text-blue-600 hover:text-blue-800 font-semibold inline-flex items-center gap-1">
+                                <i class="fa-solid fa-file-pdf"></i> Memo
+                            </a>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        // View single scan from history
+        async function viewHistoricalScan(id) {
+            try {
+                const res = await fetch(`/api/scan/${id}`);
+                const data = await res.json();
+                renderScanResults(data);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            } catch (err) {
+                alert('Failed retrieving scan: ' + err.message);
+            }
+        }
+    </script>
+</body>
+</html>

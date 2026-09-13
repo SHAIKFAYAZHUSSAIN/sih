@@ -1,0 +1,123 @@
+{
+  "id": "sample_02",
+  "title": "Desi Swad Roasted Namkeen",
+  "category": "Savory Snacks",
+  "filename": "sample_02_illegal_unit_snack.jpg",
+  "bg_color": [
+    255,
+    247,
+    237
+  ],
+  "border_color": [
+    239,
+    68,
+    68
+  ],
+  "details": [
+    [
+      "Generic Name / Commodity:",
+      "Spicy Roasted Mixture",
+      false
+    ],
+    [
+      "Manufactured & Packed By:",
+      "Desi Swad Foods Ltd, GIDC Estate, Vatva, Ahmedabad, Gujarat 382445",
+      false
+    ],
+    [
+      "Country of Origin:",
+      "India",
+      false
+    ],
+    [
+      "Consumer Care / Complaints:",
+      "Phone: 079-22334455, Email: care@desiswad.in",
+      false
+    ],
+    [
+      "Notice:",
+      "Stored in dry hygienic condition",
+      false
+    ]
+  ],
+  "stamp": {
+    "coords": [
+      40,
+      520,
+      660,
+      710
+    ],
+    "lines": [
+      "LOT: DS-N771",
+      "NET WT.: 400 gms  <-- ILLEGAL UNIT 'gms'!",
+      "MFG: 07/2026",
+      "MRP: Rs. 120.00 (incl. of all taxes)",
+      "USP: Rs. 0.30 per g  [Printed Numeral Height: 1.1mm - UNDERSIZED!]"
+    ],
+    "draw_qr": false
+  },
+  "extracted_data": {
+    "commodity_name": "Desi Swad Roasted Namkeen",
+    "generic_name": "Spicy Roasted Mixture",
+    "category": "Savory Snacks",
+    "manufacturer_name": "Desi Swad Foods Ltd",
+    "manufacturer_address": "GIDC Estate, Vatva, Ahmedabad, Gujarat 382445",
+    "country_of_origin": "India",
+    "net_quantity_raw": "400 gms",
+    "net_quantity_value": 400.0,
+    "net_quantity_unit": "gms",
+    "mrp_raw": "Rs. 120.00 (incl. of all taxes)",
+    "mrp_value": 120.0,
+    "unit_sale_price_raw": "Rs. 0.30 per g",
+    "unit_sale_price_value": 0.3,
+    "mfg_date": "07/2026",
+    "consumer_care_phone": "079-22334455",
+    "consumer_care_email": "care@desiswad.in",
+    "measured_numeral_height_mm": 1.1,
+    "measured_letter_height_mm": 1.0,
+    "has_qr_code": false
+  },
+  "bounding_boxes": [
+    {
+      "label": "Generic Name",
+      "box": [
+        40,
+        140,
+        600,
+        185
+      ],
+      "color": "#10b981"
+    },
+    {
+      "label": "Manufacturer Details",
+      "box": [
+        40,
+        200,
+        650,
+        255
+      ],
+      "color": "#10b981"
+    },
+    {
+      "label": "VIOLATION: Illegal Unit 'gms'",
+      "box": [
+        40,
+        560,
+        450,
+        600
+      ],
+      "color": "#ef4444"
+    },
+    {
+      "label": "VIOLATION: Font Height < 2.0mm",
+      "box": [
+        40,
+        650,
+        650,
+        700
+      ],
+      "color": "#ef4444"
+    }
+  ],
+  "image_rel_path": "/static/images/sample_02_illegal_unit_snack.jpg"
+}
