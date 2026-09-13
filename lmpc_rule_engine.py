@@ -183,6 +183,21 @@ class LMPCRuleEngine:
                         description=f"Manufacture date '{mfg_date_str}' is set in the future beyond allowable threshold."
                     ))
 
+        # Check Expiry Date vs Manufacturing Date Chronology
+        exp_date_str = extracted.get("exp_date")
+        if mfg_date_str and exp_date_str:
+            parsed_mfg = self._parse_month_year(mfg_date_str)
+            parsed_exp = self._parse_month_year(exp_date_str)
+            if parsed_mfg and parsed_exp:
+                if parsed_exp < parsed_mfg:
+                    violations.append(Violation(
+                        rule_id="RULE_6_1_D_INVERTED_EXPIRY",
+                        rule_reference="Rule 6(1)(d) & LM Act",
+                        severity="CRITICAL",
+                        title="Expiry Date Precedes Manufacturing Date",
+                        description=f"Expiry date '{exp_date_str}' is earlier than manufacture date '{mfg_date_str}' (Chronological Inversion / Label Tampering)."
+                    ))
+
         # 6. Rule 6(1)(e): Maximum Retail Price (MRP)
         mrp_val = extracted.get("mrp_value")
         mrp_raw = str(extracted.get("mrp_raw", ""))
@@ -215,7 +230,7 @@ class LMPCRuleEngine:
                     rule_reference="Rule 6(11) (G.S.R. 779(E))",
                     severity="CRITICAL",
                     title="Missing Unit Sale Price (USP)",
-                    description="Mandatory Unit Sale Price (e.g. ₹/g, ₹/kg, ₹/ml, ₹/l) is not declared."
+                    description="Mandatory Unit Sale Price (e.g. Rs./g, Rs./kg, Rs./ml, Rs./l) is not declared."
                 ))
             else:
                 # Verify standard USP denominator unit format
@@ -231,7 +246,7 @@ class LMPCRuleEngine:
                             rule_reference="Rule 6(11) (G.S.R. 779(E))",
                             severity="CRITICAL",
                             title="Mathematical Discrepancy in Unit Sale Price",
-                            description=f"Declared USP (₹{usp_val}) does not match calculated USP (₹{expected_usp:.2f}) from MRP ₹{mrp_val} & Net Qty {net_qty_val} {net_qty_unit}."
+                            description=f"Declared USP (Rs. {usp_val}) does not match calculated USP (Rs. {expected_usp:.2f}) from MRP Rs. {mrp_val} & Net Qty {net_qty_val} {net_qty_unit}."
                         ))
 
         # 8. Rule 6(2): Consumer Care Details
@@ -325,7 +340,9 @@ class LMPCRuleEngine:
         usp_lower = usp_raw.lower()
         
         if unit in ["g", "kg"]:
-            if norm_g_or_ml < 1000 and "per g" not in usp_lower and "/g" not in usp_lower and "/ g" not in usp_lower:
+            has_per_g = bool(re.search(r'(?:per|\/)\s*g\b', usp_lower) or "perg" in usp_lower)
+            has_per_kg = bool(re.search(r'(?:per|\/)\s*kg\b', usp_lower) or "perkg" in usp_lower)
+            if norm_g_or_ml < 1000 and not has_per_g:
                 violations.append(Violation(
                     rule_id="RULE_6_11_USP_UNIT",
                     rule_reference="Rule 6(11)(i) (G.S.R. 779(E))",
@@ -333,7 +350,7 @@ class LMPCRuleEngine:
                     title="Incorrect USP Denominator Unit (< 1kg)",
                     description="For net quantity less than 1kg, Unit Sale Price must be declared as 'Rs. __ per g'."
                 ))
-            elif norm_g_or_ml >= 1000 and "per kg" not in usp_lower and "/kg" not in usp_lower and "/ kg" not in usp_lower:
+            elif norm_g_or_ml >= 1000 and not has_per_kg:
                 violations.append(Violation(
                     rule_id="RULE_6_11_USP_UNIT",
                     rule_reference="Rule 6(11)(ii) (G.S.R. 779(E))",
@@ -342,7 +359,9 @@ class LMPCRuleEngine:
                     description="For net quantity 1kg or more, Unit Sale Price must be declared as 'Rs. __ per kg'."
                 ))
         elif unit in ["ml", "l"]:
-            if norm_g_or_ml < 1000 and "per ml" not in usp_lower and "/ml" not in usp_lower:
+            has_per_ml = bool(re.search(r'(?:per|\/)\s*ml\b', usp_lower) or "perml" in usp_lower)
+            has_per_l = bool(re.search(r'(?:per|\/)\s*(?:l|litre)\b', usp_lower) or "perl" in usp_lower or "perlitre" in usp_lower)
+            if norm_g_or_ml < 1000 and not has_per_ml:
                 violations.append(Violation(
                     rule_id="RULE_6_11_USP_UNIT",
                     rule_reference="Rule 6(11)(vi) (G.S.R. 779(E))",
@@ -350,7 +369,7 @@ class LMPCRuleEngine:
                     title="Incorrect USP Denominator Unit (< 1L)",
                     description="For net volume less than 1 litre, Unit Sale Price must be declared as 'Rs. __ per ml'."
                 ))
-            elif norm_g_or_ml >= 1000 and "per litre" not in usp_lower and "per l" not in usp_lower and "/l" not in usp_lower:
+            elif norm_g_or_ml >= 1000 and not has_per_l:
                 violations.append(Violation(
                     rule_id="RULE_6_11_USP_UNIT",
                     rule_reference="Rule 6(11)(vii) (G.S.R. 779(E))",
