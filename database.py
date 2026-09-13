@@ -3,12 +3,18 @@ SQLite Repository for Legal Metrology Inspections
 Handles persistent storage and retrieval of product scans, violations, and compliance metrics.
 """
 
+import os
 import sqlite3
 import json
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 
-DB_PATH = "c:/Users/sfaya/Documents/SIH/lmpc_inspections.db"
+# On Vercel, only /tmp is writable
+if os.environ.get("VERCEL"):
+    DB_PATH = "/tmp/lmpc_inspections.db"
+else:
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    DB_PATH = os.path.join(BASE_DIR, "lmpc_inspections.db")
 
 def get_connection():
     conn = sqlite3.connect(DB_PATH)

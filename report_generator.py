@@ -14,7 +14,12 @@ from reportlab.platypus import (
 )
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
-REPORTS_DIR = "c:/Users/sfaya/Documents/SIH/reports"
+# On Vercel, write to /tmp/reports
+if os.environ.get("VERCEL"):
+    REPORTS_DIR = "/tmp/reports"
+else:
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    REPORTS_DIR = os.path.join(BASE_DIR, "reports")
 os.makedirs(REPORTS_DIR, exist_ok=True)
 
 def generate_inspection_pdf(scan_record: Dict[str, Any], output_path: Optional[str] = None) -> str:

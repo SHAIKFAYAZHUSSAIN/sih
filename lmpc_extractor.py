@@ -12,7 +12,8 @@ import cv2
 import numpy as np
 from PIL import Image
 
-SAMPLE_DIR = "c:/Users/sfaya/Documents/SIH/sample_data"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+SAMPLE_DIR = os.path.join(BASE_DIR, "sample_data")
 
 class LMPCExtractor:
     def __init__(self):

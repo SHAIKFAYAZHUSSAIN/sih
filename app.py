@@ -17,12 +17,17 @@ from lmpc_rule_engine import LMPCRuleEngine
 from lmpc_extractor import LMPCExtractor
 from report_generator import generate_inspection_pdf
 
-# Setup directories
-BASE_DIR = "c:/Users/sfaya/Documents/SIH"
+# Setup directories dynamically
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(BASE_DIR, "static")
-UPLOADS_DIR = os.path.join(STATIC_DIR, "uploads")
-REPORTS_DIR = os.path.join(BASE_DIR, "reports")
 TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
+
+if os.environ.get("VERCEL"):
+    UPLOADS_DIR = "/tmp/uploads"
+    REPORTS_DIR = "/tmp/reports"
+else:
+    UPLOADS_DIR = os.path.join(STATIC_DIR, "uploads")
+    REPORTS_DIR = os.path.join(BASE_DIR, "reports")
 
 os.makedirs(STATIC_DIR, exist_ok=True)
 os.makedirs(UPLOADS_DIR, exist_ok=True)
