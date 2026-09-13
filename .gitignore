@@ -6,3 +6,6 @@ __pycache__/
 .env
 .DS_Store
 Thumbs.db
+reports/*.pdf
+static/uploads/*
+!static/uploads/.gitkeep

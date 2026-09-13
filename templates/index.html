@@ -148,9 +148,11 @@
                     </div>
 
                     <!-- Image Display with Canvas Overlay -->
-                    <div id="imageViewerContainer" class="mt-4 relative bg-slate-900 rounded-lg overflow-hidden border border-slate-200 hidden min-h-[420px] flex items-center justify-center">
-                        <img id="productImage" src="" alt="Product Label" class="max-h-[500px] w-auto object-contain block mx-auto">
-                        <canvas id="overlayCanvas" class="absolute inset-0 pointer-events-none w-full h-full"></canvas>
+                    <div id="imageViewerContainer" class="mt-4 bg-slate-950 rounded-xl overflow-hidden border border-slate-700 hidden p-3 flex items-center justify-center min-h-[420px]">
+                        <div class="relative inline-block max-w-full" id="imageCanvasWrapper">
+                            <img id="productImage" src="" alt="Product Label" class="max-h-[520px] max-w-full w-auto h-auto block rounded shadow-lg mx-auto">
+                            <canvas id="overlayCanvas" class="absolute top-0 left-0 w-full h-full pointer-events-none rounded"></canvas>
+                        </div>
                     </div>
 
                     <div id="bboxLegend" class="mt-3 flex flex-wrap gap-2 text-[11px] hidden">
@@ -314,11 +316,33 @@
             }
         }
 
-        // Handle File Upload
+        // Handle File Upload with Instant Client Preview
+        let currentBoxes = [];
         const fileInput = document.getElementById('fileInput');
         fileInput.addEventListener('change', async (e) => {
             if (e.target.files.length === 0) return;
             const file = e.target.files[0];
+            
+            // 1. Instant local preview so user sees their photo immediately
+            const reader = new FileReader();
+            const imgEl = document.getElementById('productImage');
+            const imgContainer = document.getElementById('imageViewerContainer');
+            const legend = document.getElementById('bboxLegend');
+            
+            reader.onload = (ev) => {
+                imgEl.src = ev.target.result;
+                imgContainer.classList.remove('hidden');
+                legend.classList.remove('hidden');
+                // Clear any old bounding boxes while scanning
+                const canvas = document.getElementById('overlayCanvas');
+                if (canvas) {
+                    const ctx = canvas.getContext('2d');
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                }
+            };
+            reader.readAsDataURL(file);
+
+            // 2. Send to backend AI pipeline
             const formData = new FormData();
             formData.append('image', file);
 
@@ -346,6 +370,7 @@
 
         function renderScanResults(data) {
             currentScanId = data.scan_id;
+            currentBoxes = data.bounding_boxes || [];
             const extracted = data.extracted_data;
             const result = data.compliance_result;
 
@@ -360,8 +385,12 @@
 
             imgEl.onload = () => {
                 document.getElementById('imageDimLabel').innerText = `${imgEl.naturalWidth} × ${imgEl.naturalHeight} px`;
-                drawBoundingBoxes(data.bounding_boxes, imgEl);
+                drawBoundingBoxes(currentBoxes, imgEl);
             };
+            if (imgEl.complete && imgEl.naturalWidth > 0) {
+                document.getElementById('imageDimLabel').innerText = `${imgEl.naturalWidth} × ${imgEl.naturalHeight} px`;
+                drawBoundingBoxes(currentBoxes, imgEl);
+            }
 
             // 2. Update Verdict Banner
             const score = result.compliance_score;
@@ -457,39 +486,56 @@
             `).join('');
         }
 
-        // Draw Bounding Boxes on Overlay Canvas
+        // Draw Bounding Boxes on Overlay Canvas (Pixel-Perfect Natural Coordinate Mapping)
         function drawBoundingBoxes(boxes, imgEl) {
             const canvas = document.getElementById('overlayCanvas');
-            const rect = imgEl.getBoundingClientRect();
-            canvas.width = imgEl.clientWidth;
-            canvas.height = imgEl.clientHeight;
+            if (!canvas || !imgEl || !imgEl.naturalWidth || !imgEl.naturalHeight) return;
+
+            // Set canvas internal resolution to match natural image dimensions
+            canvas.width = imgEl.naturalWidth;
+            canvas.height = imgEl.naturalHeight;
+
             const ctx = canvas.getContext('2d');
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            const scaleX = canvas.width / imgEl.naturalWidth;
-            const scaleY = canvas.height / imgEl.naturalHeight;
+            if (!boxes || boxes.length === 0) return;
 
             boxes.forEach(b => {
                 const [x1, y1, x2, y2] = b.box;
-                const sx = x1 * scaleX;
-                const sy = y1 * scaleY;
-                const sw = (x2 - x1) * scaleX;
-                const sh = (y2 - y1) * scaleY;
+                const w = x2 - x1;
+                const h = y2 - y1;
+                const col = b.color || '#3b82f6';
 
-                ctx.lineWidth = 2;
-                ctx.strokeStyle = b.color || '#3b82f6';
-                ctx.strokeRect(sx, sy, sw, sh);
+                // Bounding Box Stroke
+                const strokeW = Math.max(3, Math.round(canvas.width / 200));
+                ctx.lineWidth = strokeW;
+                ctx.strokeStyle = col;
+                ctx.strokeRect(x1, y1, w, h);
 
-                // Label background
-                ctx.fillStyle = b.color || '#3b82f6';
-                ctx.fillRect(sx, sy - 18, Math.min(sw, 180), 18);
+                // Semi-transparent highlight fill
+                ctx.fillStyle = col + '22';
+                ctx.fillRect(x1, y1, w, h);
 
-                // Label text
+                // Header tag banner
+                const tagH = Math.max(26, Math.round(canvas.height / 32));
+                const fontSz = Math.max(13, Math.round(tagH * 0.55));
+                ctx.fillStyle = col;
+                ctx.fillRect(x1, Math.max(0, y1 - tagH), Math.min(w, canvas.width * 0.7), tagH);
+
+                // Header text
                 ctx.fillStyle = '#ffffff';
-                ctx.font = '10px Inter, sans-serif';
-                ctx.fillText(b.label, sx + 4, sy - 5);
+                ctx.font = `bold ${fontSz}px Inter, sans-serif`;
+                ctx.fillText(b.label, x1 + 6, Math.max(fontSz + 2, y1 - (tagH - fontSz) / 2));
             });
         }
+
+        // Re-align on window resize
+        window.addEventListener('resize', () => {
+            const imgEl = document.getElementById('productImage');
+            if (imgEl && imgEl.complete && currentBoxes.length > 0) {
+                drawBoundingBoxes(currentBoxes, imgEl);
+            }
+        });
 
         // Load Global Dashboard Stats
         async function loadDashboardStats() {
