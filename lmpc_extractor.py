@@ -206,9 +206,12 @@ class LMPCExtractor:
         candidate_boxes = []
 
         all_text_lines = []
+        line_items = []
         for item in ocr_results:
             pts = item[0]
             text = str(item[1]).strip()
+            if not text:
+                continue
             all_text_lines.append(text)
             
             x1 = int(min(p[0] for p in pts))
@@ -217,136 +220,162 @@ class LMPCExtractor:
             y2 = int(max(p[1] for p in pts))
             box = [max(0, x1), max(0, y1), min(w, x2), min(h, y2)]
             box_height = y2 - y1
+            line_items.append({
+                "text": text,
+                "box": box,
+                "height": box_height
+            })
+
+        full_ocr_text = "\n".join(all_text_lines)
+
+        # Helper to add candidate box safely without duplicates
+        def add_box(key, label, box, color="#10b981"):
+            for b in candidate_boxes:
+                if b.get("key") == key:
+                    return
+            candidate_boxes.append({
+                "key": key,
+                "label": label,
+                "box": box,
+                "color": color
+            })
+
+        # PASS 1: Line by Line Pattern Matching
+        for item in line_items:
+            text = item["text"]
+            box = item["box"]
+            box_height = item["height"]
 
             # Check Net Quantity
-            m_net = re.search(r'(?:Net\s*Qty|Net\s*Quantity|Net\s*Wt|Net\s*Weight|NET\s*QTY)[:.\s]*([0-9.]+)\s*([a-zA-Z]+)', text, re.I)
+            m_net = re.search(r'(?:Net\s*Qty|Net\s*Quantity|Net\s*Wt|Net\s*Weight|NET\s*QTY)[:.\s]*([0-9]+(?:[.,][0-9]+)?)\s*([a-zA-Z]+)', text, re.I)
             if not m_net:
-                m_net = re.search(r'\b([0-9.]+)\s*(g|kg|ml|l|L|gms|gm)\b', text, re.I)
+                m_net = re.search(r'\b([0-9]+(?:[.,][0-9]+)?)\s*(g|kg|ml|l|L|gms|gm)\b', text, re.I)
             if m_net and not extracted["net_quantity_value"]:
                 extracted["net_quantity_raw"] = f"{m_net.group(1)} {m_net.group(2)}"
                 try:
-                    extracted["net_quantity_value"] = float(m_net.group(1))
+                    extracted["net_quantity_value"] = float(m_net.group(1).replace(',', '.'))
                     extracted["net_quantity_unit"] = m_net.group(2).lower()
                     extracted["measured_numeral_height_mm"] = round(max(1.0, box_height / est_px_per_mm), 1)
                 except Exception:
                     pass
-                candidate_boxes.append({
-                    "key": "net_qty",
-                    "label": f"Net Qty: {m_net.group(1)} {m_net.group(2)}",
-                    "box": box,
-                    "color": "#10b981"
-                })
+                add_box("net_qty", f"Net Qty: {m_net.group(1)} {m_net.group(2)}", box, "#10b981")
                 continue
 
             # Check Batch Number
-            m_batch = re.search(r'(?:B\.?No|Batch|Lot)[:.\s]*([A-Za-z0-9_-]+)', text, re.I)
+            m_batch = re.search(r'(?:B\.?\s*No|Batch|Lot)[:.\s]*([A-Za-z0-9_-]+)', text, re.I)
             if m_batch and not extracted["batch_number"]:
-                extracted["batch_number"] = m_batch.group(1)
-                candidate_boxes.append({
-                    "key": "batch",
-                    "label": f"Batch: {m_batch.group(1)}",
-                    "box": box,
-                    "color": "#3b82f6"
-                })
+                extracted["batch_number"] = m_batch.group(1).strip()
+                add_box("batch", f"Batch: {m_batch.group(1)}", box, "#3b82f6")
                 continue
 
             # Check Mfg Date
-            m_mfg = re.search(r'(?:Mfg|Mfd|Pkg|Packed|PKD|DOM)[:.\s]*(?:Dt\.?|Date)?[:.\s]*([0-9]{1,2}[-/\.][0-9]{2,4}|[A-Za-z]{3,9}[-/\s][0-9]{2,4})', text, re.I)
+            m_mfg = re.search(r'(?:Mfg|Mfd|Pkg|Packed|PKD|DOM|Date\s*of\s*Mfg|Date\s*of\s*Manufacture)[:.\s]*(?:Dt\.?|Date)?[:.\s]*([0-9]{1,2}\s*[-/\.]\s*[0-9]{2,4}|[A-Za-z]{3,9}\s*[-/\s]\s*[0-9]{2,4})', text, re.I)
             if m_mfg and not extracted["mfg_date"]:
-                extracted["mfg_date"] = m_mfg.group(1)
-                candidate_boxes.append({
-                    "key": "mfg_date",
-                    "label": f"Mfg Date: {m_mfg.group(1)}",
-                    "box": box,
-                    "color": "#10b981"
-                })
+                clean_d = re.sub(r'\s*([-/\.])\s*', r'\1', m_mfg.group(1)).strip()
+                extracted["mfg_date"] = clean_d
+                add_box("mfg_date", f"Mfg Date: {clean_d}", box, "#10b981")
                 continue
 
             # Check Expiry Date
-            m_exp = re.search(r'(?:Exp|Expiry|Best\s*Before|BB|USE\s*BY)[:.\s]*(?:Dt\.?|Date)?[:.\s]*([0-9]{1,2}[-/\.][0-9]{2,4}|[A-Za-z]{3,9}[-/\s][0-9]{2,4})', text, re.I)
+            m_exp = re.search(r'(?:Exp|Expiry|Best\s*Before|BB|USE\s*BY|Date\s*of\s*Expiry)[:.\s]*(?:Dt\.?|Date)?[:.\s]*([0-9]{1,2}\s*[-/\.]\s*[0-9]{2,4}|[A-Za-z]{3,9}\s*[-/\s]\s*[0-9]{2,4})', text, re.I)
             if m_exp and not extracted["exp_date"]:
-                extracted["exp_date"] = m_exp.group(1)
-                candidate_boxes.append({
-                    "key": "exp_date",
-                    "label": f"Exp Date: {m_exp.group(1)}",
-                    "box": box,
-                    "color": "#10b981"
-                })
+                clean_d = re.sub(r'\s*([-/\.])\s*', r'\1', m_exp.group(1)).strip()
+                extracted["exp_date"] = clean_d
+                add_box("exp_date", f"Exp Date: {clean_d}", box, "#10b981")
                 continue
 
-            # Check MRP
-            m_mrp = re.search(r'(?:MRP|M\.R\.P\.)[:.\s]*(?:Rs\.?|INR)?\s*([0-9]+(?:\.[0-9]{1,2})?)', text, re.I)
-            if m_mrp and not extracted["mrp_value"]:
-                extracted["mrp_raw"] = text
+            # Check MRP (Support Rs, INR, ₹, OCR misspellings like HRP, MBP, MAP)
+            m_mrp = re.search(r'(?:M\.?\s*R\.?\s*P\.?|MAX(?:IMUM)?\.?\s*RETAIL\s*PRICE|[HMN]RP)[:.\s]*(?:\(?(?:incl(?:usive)?\.?\s*(?:of)?\s*all\s*taxes)\)?)?[:.\s]*(?:Rs\.?|INR|₹|\u20b9)?\s*([0-9]+(?:[.,][0-9]{1,2})?)', text, re.I)
+            if m_mrp and m_mrp.group(1) and not extracted["mrp_value"]:
+                extracted["mrp_raw"] = text.replace("₹", "Rs. ")
                 try:
-                    extracted["mrp_value"] = float(m_mrp.group(1))
+                    extracted["mrp_value"] = float(m_mrp.group(1).replace(',', '.'))
                 except Exception:
                     pass
-                candidate_boxes.append({
-                    "key": "mrp",
-                    "label": f"MRP: Rs. {m_mrp.group(1)}",
-                    "box": box,
-                    "color": "#3b82f6"
-                })
+                add_box("mrp", f"MRP: Rs. {m_mrp.group(1)}", box, "#3b82f6")
                 continue
 
             # Check USP
-            m_usp = re.search(r'(?:USP|U\.S\.P\.|Unit\s*Sale\s*Price)[:.\s]*(?:Rs\.?|INR)?\s*([0-9]+(?:\.[0-9]{1,2})?)\s*(?:per|\/)?\s*([a-zA-Z]+)?', text, re.I)
-            if m_usp and not extracted["unit_sale_price_value"]:
-                extracted["unit_sale_price_raw"] = text
+            m_usp = re.search(r'(?:U\.?\s*S\.?\s*P\.?|UNIT\s*SALE\s*PRICE)[:.\s]*(?:Rs\.?|INR|₹|\u20b9)?\s*([0-9]+(?:[.,][0-9]{1,2})?)\s*(?:per|\/)?\s*([a-zA-Z]+)?', text, re.I)
+            if m_usp and m_usp.group(1) and not extracted["unit_sale_price_value"]:
+                extracted["unit_sale_price_raw"] = text.replace("₹", "Rs. ")
                 try:
-                    extracted["unit_sale_price_value"] = float(m_usp.group(1))
+                    extracted["unit_sale_price_value"] = float(m_usp.group(1).replace(',', '.'))
                 except Exception:
                     pass
-                unit_str = m_usp.group(2) or "unit"
-                candidate_boxes.append({
-                    "key": "usp",
-                    "label": f"USP: Rs. {m_usp.group(1)}/{unit_str}",
-                    "box": box,
-                    "color": "#3b82f6"
-                })
+                unit_str = m_usp.group(2) or "g"
+                add_box("usp", f"USP: Rs. {m_usp.group(1)}/{unit_str}", box, "#3b82f6")
                 continue
 
             # Check Manufacturer Name
             m_mfr = re.search(r'(?:Mfd\s*by|Manufactured\s*by|Marketed\s*by|Packed\s*by|Mfg\s*by)[:.\s]*(.+)', text, re.I)
             if m_mfr and not extracted["manufacturer_name"]:
                 val = m_mfr.group(1).strip()
-                if len(val) > 3:
+                if len(val) > 3 and not any(k in val.lower() for k in ["mrp", "date", "batch", "qty", "table"]):
                     extracted["manufacturer_name"] = val
-                    candidate_boxes.append({
-                        "key": "mfr",
-                        "label": f"Mfr: {val[:20]}",
-                        "box": box,
-                        "color": "#10b981"
-                    })
+                    add_box("mfr", f"Mfr: {val[:20]}", box, "#10b981")
                     continue
 
             # Check Consumer Care Phone
             m_phone = re.search(r'(?:1800[- ]?[0-9]{3}[- ]?[0-9]{3,4}|\b[6-9][0-9]{9}\b)', text)
             if m_phone and not extracted["consumer_care_phone"]:
                 extracted["consumer_care_phone"] = m_phone.group(0)
-                candidate_boxes.append({
-                    "key": "phone",
-                    "label": f"Helpline: {m_phone.group(0)}",
-                    "box": box,
-                    "color": "#10b981"
-                })
+                add_box("phone", f"Helpline: {m_phone.group(0)}", box, "#10b981")
                 continue
 
             # Check Consumer Care Email
             m_email = re.search(r'([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)', text)
             if m_email and not extracted["consumer_care_email"]:
                 extracted["consumer_care_email"] = m_email.group(1)
-                candidate_boxes.append({
-                    "key": "email",
-                    "label": f"Email: {m_email.group(1)[:18]}",
-                    "box": box,
-                    "color": "#10b981"
-                })
+                add_box("email", f"Email: {m_email.group(1)[:18]}", box, "#10b981")
                 continue
 
+        # PASS 2: Sliding Window of 2 Adjacent Lines (for multi-line declarations)
+        for i in range(len(line_items) - 1):
+            pair_text = line_items[i]["text"] + " " + line_items[i+1]["text"]
+            b1 = line_items[i]["box"]
+            b2 = line_items[i+1]["box"]
+            union_box = [min(b1[0], b2[0]), min(b1[1], b2[1]), max(b1[2], b2[2]), max(b1[3], b2[3])]
+
+            if not extracted["mrp_value"]:
+                m_mrp = re.search(r'(?:M\.?\s*R\.?\s*P\.?|MAX(?:IMUM)?\.?\s*RETAIL\s*PRICE|[HMN]RP)[:.\s]*(?:\(?(?:incl(?:usive)?\.?\s*(?:of)?\s*all\s*taxes)\)?)?[:.\s]*(?:Rs\.?|INR|₹|\u20b9)?\s*([0-9]+(?:[.,][0-9]{1,2})?)', pair_text, re.I)
+                if m_mrp and m_mrp.group(1):
+                    extracted["mrp_raw"] = pair_text.replace("₹", "Rs. ")
+                    try:
+                        extracted["mrp_value"] = float(m_mrp.group(1).replace(',', '.'))
+                    except Exception:
+                        pass
+                    add_box("mrp", f"MRP: Rs. {m_mrp.group(1)}", union_box, "#3b82f6")
+
+            if not extracted["exp_date"]:
+                m_exp = re.search(r'(?:Exp|Expiry|Best\s*Before|BB|USE\s*BY|Date\s*of\s*Expiry)[:.\s]*(?:Dt\.?|Date)?[:.\s]*([0-9]{1,2}\s*[-/\.]\s*[0-9]{2,4}|[A-Za-z]{3,9}\s*[-/\s]\s*[0-9]{2,4})', pair_text, re.I)
+                if m_exp:
+                    clean_d = re.sub(r'\s*([-/\.])\s*', r'\1', m_exp.group(1)).strip()
+                    extracted["exp_date"] = clean_d
+                    add_box("exp_date", f"Exp Date: {clean_d}", union_box, "#10b981")
+
+            if not extracted["unit_sale_price_value"]:
+                m_usp = re.search(r'(?:U\.?\s*S\.?\s*P\.?|UNIT\s*SALE\s*PRICE)[:.\s]*(?:Rs\.?|INR|₹|\u20b9)?\s*([0-9]+(?:[.,][0-9]{1,2})?)\s*(?:per|\/)?\s*([a-zA-Z]+)?', pair_text, re.I)
+                if m_usp and m_usp.group(1):
+                    extracted["unit_sale_price_raw"] = pair_text.replace("₹", "Rs. ")
+                    try:
+                        extracted["unit_sale_price_value"] = float(m_usp.group(1).replace(',', '.'))
+                    except Exception:
+                        pass
+                    unit_str = m_usp.group(2) or "g"
+                    add_box("usp", f"USP: Rs. {m_usp.group(1)}/{unit_str}", union_box, "#3b82f6")
+
+        # PASS 3: Full Document Fallback for MRP & Standalone Prices
+        if not extracted["mrp_value"]:
+            m_fallback = re.search(r'(?:Rs\.?|INR|₹|\u20b9)\s*([0-9]+(?:\.[0-9]{1,2})?)', full_ocr_text)
+            if m_fallback:
+                extracted["mrp_raw"] = f"MRP Rs. {m_fallback.group(1)}"
+                try:
+                    extracted["mrp_value"] = float(m_fallback.group(1))
+                except Exception:
+                    pass
+
         # Check full combined text for missing multi-line tax clause in MRP
-        full_ocr_text = " ".join(all_text_lines)
         if extracted["mrp_raw"] and not re.search(r"incl(?:usive)?\s*(?:of)?\s*all\s*taxes", extracted["mrp_raw"], re.I):
             if re.search(r"incl(?:usive)?\s*(?:of)?\s*all\s*taxes", full_ocr_text, re.I):
                 extracted["mrp_raw"] += " (inclusive of all taxes)"
@@ -378,14 +407,13 @@ class LMPCExtractor:
                         b["color"] = "#ef4444"
                         b["label"] = f"VIOLATION: Exp {extracted['exp_date']} < Mfg"
 
-        # Determine Generic Name or Commodity Name from text if not set
-        if not extracted["generic_name"]:
-            for t in all_text_lines[:15]:
-                t_clean = re.sub(r'[^a-zA-Z\s]', '', t).strip()
-                if len(t_clean.split()) >= 2 and len(t_clean) > 8 and not any(k in t.lower() for k in ["vitamin", "batch", "date", "table", "mrp", "usp", "net"]):
-                    extracted["generic_name"] = t_clean
-                    extracted["commodity_name"] = t_clean
-                    break
+        # Strict Generic Name Extraction - do NOT take random OCR words as generic name
+        for l in all_text_lines:
+            m_gen = re.search(r'(?:Generic\s*Name|Common\s*Name|Commodity\s*Name|Product)[:.\s]*(.+)', l, re.I)
+            if m_gen and not extracted["generic_name"]:
+                extracted["generic_name"] = m_gen.group(1).strip()
+                extracted["commodity_name"] = m_gen.group(1).strip()
+                break
 
         # Remove temporary internal key from boxes
         final_boxes = [{"label": b["label"], "box": b["box"], "color": b["color"]} for b in candidate_boxes]
@@ -401,8 +429,8 @@ class LMPCExtractor:
 
     def _parse_date(self, date_str: str) -> Optional[datetime]:
         if not date_str: return None
-        date_str = date_str.strip()
-        for p in ["%m/%Y", "%m/%y", "%b %Y", "%B %Y", "%m-%Y", "%b-%Y", "%d/%m/%Y", "%d-%m-%Y"]:
+        date_str = re.sub(r'\s*([-/\.])\s*', r'\1', date_str.strip())
+        for p in ["%m/%Y", "%m/%y", "%b %Y", "%B %Y", "%m-%Y", "%b-%Y", "%m.%Y", "%d/%m/%Y", "%d-%m-%Y"]:
             try:
                 return datetime.strptime(date_str, p)
             except ValueError:

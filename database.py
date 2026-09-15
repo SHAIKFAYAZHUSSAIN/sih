@@ -53,6 +53,8 @@ def init_db():
         mrp TEXT,
         unit_sale_price TEXT,
         mfg_date TEXT,
+        exp_date TEXT,
+        batch_number TEXT,
         is_compliant INTEGER,
         compliance_score REAL,
         violations_count INTEGER,
@@ -61,6 +63,16 @@ def init_db():
         raw_result_json TEXT
     );
     """)
+
+    # Graceful migration for existing DB
+    try:
+        cursor.execute("ALTER TABLE scans ADD COLUMN exp_date TEXT;")
+    except Exception:
+        pass
+    try:
+        cursor.execute("ALTER TABLE scans ADD COLUMN batch_number TEXT;")
+    except Exception:
+        pass
 
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS violations (
@@ -86,14 +98,33 @@ def save_scan(extracted: Dict[str, Any], result: Dict[str, Any], image_path: str
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     scan_uid = f"LM-{datetime.now().strftime('%Y%m%d')}-{int(datetime.now().timestamp()*1000) % 100000:05d}"
     
-    name = extracted.get("generic_name") or extracted.get("commodity_name") or "Unspecified Packaged Commodity"
-    category = extracted.get("category") or "FMCG Retail"
-    mfg_name = extracted.get("manufacturer_name") or "Unknown Manufacturer"
+    name = extracted.get("generic_name") or extracted.get("commodity_name") or "Packaged Commodity"
+    category = extracted.get("category") or "Packaged Retail Goods"
+    mfg_name = extracted.get("manufacturer_name") or "Not Declared"
     
-    net_qty_str = f"{extracted.get('net_quantity_value', '')} {extracted.get('net_quantity_unit', '')}".strip()
-    mrp_str = f"₹{extracted.get('mrp_value', '')}" if extracted.get('mrp_value') is not None else str(extracted.get('mrp_raw', ''))
-    usp_str = f"₹{extracted.get('unit_sale_price_value', '')}" if extracted.get('unit_sale_price_value') is not None else str(extracted.get('unit_sale_price_raw', ''))
-    mfg_date_str = str(extracted.get("mfg_date", ""))
+    net_qty_val = extracted.get('net_quantity_value')
+    net_qty_unit = extracted.get('net_quantity_unit', '')
+    net_qty_str = f"{net_qty_val} {net_qty_unit}".strip() if net_qty_val is not None else str(extracted.get('net_quantity_raw') or "")
+    
+    # Use ASCII 'Rs.' rather than Unicode rupee symbol to avoid PDF missing glyph issues
+    mrp_val = extracted.get('mrp_value')
+    if mrp_val is not None:
+        mrp_str = f"Rs. {mrp_val:.2f}"
+    else:
+        raw_m = str(extracted.get('mrp_raw') or "")
+        mrp_str = raw_m.replace("₹", "Rs. ") if raw_m else ""
+        
+    usp_val = extracted.get('unit_sale_price_value')
+    if usp_val is not None:
+        unit = extracted.get('net_quantity_unit', 'g')
+        usp_str = f"Rs. {usp_val:.2f} / {unit}"
+    else:
+        raw_u = str(extracted.get('unit_sale_price_raw') or "")
+        usp_str = raw_u.replace("₹", "Rs. ") if raw_u else ""
+        
+    mfg_date_str = str(extracted.get("mfg_date") or "")
+    exp_date_str = str(extracted.get("exp_date") or "")
+    batch_str = str(extracted.get("batch_number") or "")
     
     is_compliant = 1 if result.get("is_compliant") else 0
     score = float(result.get("compliance_score", 0.0))
@@ -102,14 +133,14 @@ def save_scan(extracted: Dict[str, Any], result: Dict[str, Any], image_path: str
     cursor.execute("""
     INSERT INTO scans (
         scan_uid, commodity_name, category, manufacturer_name, image_path,
-        net_quantity, mrp, unit_sale_price, mfg_date, is_compliant,
-        compliance_score, violations_count, inspected_at,
+        net_quantity, mrp, unit_sale_price, mfg_date, exp_date, batch_number,
+        is_compliant, compliance_score, violations_count, inspected_at,
         raw_extracted_json, raw_result_json
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         scan_uid, name, category, mfg_name, image_path,
-        net_qty_str, mrp_str, usp_str, mfg_date_str, is_compliant,
-        score, len(violations), now_str,
+        net_qty_str, mrp_str, usp_str, mfg_date_str, exp_date_str, batch_str,
+        is_compliant, score, len(violations), now_str,
         json.dumps(extracted), json.dumps(result)
     ))
     
@@ -163,6 +194,11 @@ def get_scan_by_id(scan_id: int) -> Optional[Dict[str, Any]]:
     scan_dict["raw_extracted"] = json.loads(scan_dict.get("raw_extracted_json") or "{}")
     scan_dict["raw_result"] = json.loads(scan_dict.get("raw_result_json") or "{}")
     
+    if not scan_dict.get("exp_date"):
+        scan_dict["exp_date"] = scan_dict["raw_extracted"].get("exp_date") or ""
+    if not scan_dict.get("batch_number"):
+        scan_dict["batch_number"] = scan_dict["raw_extracted"].get("batch_number") or ""
+
     cursor.execute("SELECT * FROM violations WHERE scan_id = ?", (scan_id,))
     v_rows = cursor.fetchall()
     scan_dict["violations"] = [dict(r) for r in v_rows]

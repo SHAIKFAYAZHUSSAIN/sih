@@ -391,8 +391,10 @@ class LMPCRuleEngine:
             return mrp / (norm_g_or_ml / 1000.0)
 
     def _parse_month_year(self, date_str: str) -> Optional[datetime]:
-        date_str = date_str.strip()
-        patterns = ["%m/%Y", "%m/%y", "%b %Y", "%B %Y", "%m-%Y", "%b-%Y"]
+        if not date_str: return None
+        # Clean whitespace inside date like '12 - 2024' -> '12-2024'
+        date_str = re.sub(r'\s*([-/\.])\s*', r'\1', date_str.strip())
+        patterns = ["%m/%Y", "%m/%y", "%b %Y", "%B %Y", "%m-%Y", "%b-%Y", "%m.%Y", "%d/%m/%Y", "%d-%m-%Y"]
         for p in patterns:
             try:
                 return datetime.strptime(date_str, p)

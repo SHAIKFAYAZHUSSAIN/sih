@@ -358,12 +358,20 @@
                         const ocrRes = await worker.recognize(file);
                         await worker.terminate();
                         if (ocrRes && ocrRes.data && ocrRes.data.lines) {
-                            const ocrItems = ocrRes.data.lines.map(l => ({
-                                text: l.text.trim(),
-                                box: [l.bbox.x0, l.bbox.y0, l.bbox.x1, l.bbox.y1],
-                                conf: l.confidence
-                            })).filter(l => l.text.length > 0);
-                            formData.append('ocr_json', JSON.stringify(ocrItems));
+                            const ocrItems = [];
+                            ocrRes.data.lines.forEach(l => {
+                                const subLines = l.text.split('\n').map(s => s.trim()).filter(s => s.length > 0);
+                                subLines.forEach(sub => {
+                                    ocrItems.push({
+                                        text: sub,
+                                        box: [l.bbox.x0, l.bbox.y0, l.bbox.x1, l.bbox.y1],
+                                        conf: l.confidence
+                                    });
+                                });
+                            });
+                            if (ocrItems.length > 0) {
+                                formData.append('ocr_json', JSON.stringify(ocrItems));
+                            }
                         }
                     } catch (ocrErr) {
                         console.warn('Browser OCR notice (falling back to server analysis):', ocrErr);
@@ -483,15 +491,21 @@
 
             // 4. Render Extracted Declarations Table
             const tbody = document.getElementById('extractedTableBody');
+            const hasUspMismatch = result.violations.some(v => v.rule_id === 'RULE_6_11_USP_MISMATCH');
+            const hasInvertedExp = result.violations.some(v => v.rule_id === 'RULE_6_1_D_INVERTED_EXPIRY');
+            const hasTaxMissing = result.violations.some(v => v.rule_id === 'RULE_6_1_E_TAX_CLAUSE');
+
             const fields = [
-                { label: 'Manufacturer / Packer', val: extracted.manufacturer_name + (extracted.manufacturer_address ? `, ${extracted.manufacturer_address}` : ''), rule: 'Rule 6(1)(a) & 10', valid: !!extracted.manufacturer_name },
-                { label: 'Country of Origin', val: extracted.country_of_origin || 'Not explicitly stated', rule: 'Rule 10(2)', valid: !!extracted.country_of_origin },
-                { label: 'Common / Generic Name', val: extracted.generic_name || 'Missing', rule: 'Rule 6(1)(b)', valid: !!extracted.generic_name },
-                { label: 'Declared Net Quantity', val: extracted.net_quantity_raw || 'Missing', rule: 'Rule 6(1)(c) & 13', valid: extracted.net_quantity_unit !== 'gms' && !extracted.net_quantity_raw?.includes('gms') },
-                { label: 'Maximum Retail Price (MRP)', val: extracted.mrp_raw || 'Missing', rule: 'Rule 6(1)(e)', valid: !!extracted.mrp_value && (extracted.mrp_raw?.toLowerCase().includes('tax') || false) },
-                { label: 'Unit Sale Price (USP)', val: extracted.unit_sale_price_raw || '<span class="text-rose-600 font-bold">MISSING (Violation)</span>', rule: 'Rule 6(11) (2021 Amend)', valid: !!extracted.unit_sale_price_value },
-                { label: 'Month & Year of Mfg', val: extracted.mfg_date || 'Missing', rule: 'Rule 6(1)(d)', valid: !!extracted.mfg_date && !extracted.mfg_date.includes('12/2026') },
-                { label: 'Consumer Care Cell', val: `${extracted.consumer_care_phone || ''} ${extracted.consumer_care_email ? '• ' + extracted.consumer_care_email : ''}`, rule: 'Rule 6(2)', valid: !!extracted.consumer_care_phone && !!extracted.consumer_care_email },
+                { label: 'Manufacturer / Packer', val: (extracted.manufacturer_name ? extracted.manufacturer_name + (extracted.manufacturer_address ? `, ${extracted.manufacturer_address}` : '') : '<span class="text-rose-600 font-bold">NOT DECLARED</span>'), rule: 'Rule 6(1)(a) & 10', valid: !!extracted.manufacturer_name },
+                { label: 'Country of Origin', val: extracted.country_of_origin || 'India', rule: 'Rule 10(2)', valid: !!extracted.country_of_origin },
+                { label: 'Common / Generic Name', val: extracted.generic_name || '<span class="text-rose-600 font-bold">NOT DECLARED</span>', rule: 'Rule 6(1)(b)', valid: !!extracted.generic_name },
+                { label: 'Declared Net Quantity', val: extracted.net_quantity_raw || '<span class="text-rose-600 font-bold">NOT DECLARED</span>', rule: 'Rule 6(1)(c) & 13', valid: !!extracted.net_quantity_value && extracted.net_quantity_unit !== 'gms' },
+                { label: 'Batch / Lot Number', val: extracted.batch_number || '<span class="text-rose-600 font-bold">NOT DECLARED</span>', rule: 'Rule 6(1)(d)', valid: !!extracted.batch_number },
+                { label: 'Maximum Retail Price (MRP)', val: (extracted.mrp_raw ? extracted.mrp_raw + (hasTaxMissing ? ' <span class="text-amber-600 font-semibold">[Tax Clause Missing]</span>' : '') : '<span class="text-rose-600 font-bold">NOT DECLARED</span>'), rule: 'Rule 6(1)(e)', valid: !!extracted.mrp_value && !hasTaxMissing },
+                { label: 'Unit Sale Price (USP)', val: (extracted.unit_sale_price_raw ? extracted.unit_sale_price_raw + (hasUspMismatch ? ' <span class="text-rose-600 font-bold">[CALCULATION MISMATCH]</span>' : '') : '<span class="text-rose-600 font-bold">NOT DECLARED</span>'), rule: 'Rule 6(11) (2021 Amend)', valid: !!extracted.unit_sale_price_value && !hasUspMismatch },
+                { label: 'Month & Year of Mfg', val: extracted.mfg_date || '<span class="text-rose-600 font-bold">NOT DECLARED</span>', rule: 'Rule 6(1)(d)', valid: !!extracted.mfg_date },
+                { label: 'Expiry / Best Before Date', val: (extracted.exp_date ? extracted.exp_date + (hasInvertedExp ? ' <span class="text-rose-600 font-bold">[INVALID: Precedes Mfg Date]</span>' : '') : 'Not Declared'), rule: 'Rule 6(1)(d)', valid: !!extracted.exp_date && !hasInvertedExp },
+                { label: 'Consumer Care Cell', val: `${extracted.consumer_care_phone || ''} ${extracted.consumer_care_email ? '• ' + extracted.consumer_care_email : ''}`.trim() || '<span class="text-rose-600 font-bold">NOT DECLARED</span>', rule: 'Rule 6(2)', valid: !!extracted.consumer_care_phone && !!extracted.consumer_care_email },
                 { label: 'Measured Numeral Height', val: `${extracted.measured_numeral_height_mm || 'N/A'} mm`, rule: 'Rule 7 & Sched II', valid: (extracted.measured_numeral_height_mm || 0) >= 2.0 }
             ];
 

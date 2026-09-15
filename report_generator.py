@@ -46,47 +46,47 @@ def generate_inspection_pdf(scan_record: Dict[str, Any], output_path: Optional[s
     doc = SimpleDocTemplate(
         output_path,
         pagesize=A4,
-        rightMargin=15 * mm,
-        leftMargin=15 * mm,
-        topMargin=15 * mm,
-        bottomMargin=15 * mm
+        rightMargin=12 * mm,
+        leftMargin=12 * mm,
+        topMargin=8 * mm,
+        bottomMargin=8 * mm
     )
 
     styles = getSampleStyleSheet()
     
-    # Custom styles
+    # Custom compact styles for single-page statutory dossier
     title_style = ParagraphStyle(
         'DocTitle',
         parent=styles['Heading1'],
-        fontSize=13,
-        leading=16,
+        fontSize=12,
+        leading=14,
         alignment=1, # Center
         textColor=colors.HexColor("#1e3a8a"),
-        spaceAfter=2
+        spaceAfter=1
     )
     subtitle_style = ParagraphStyle(
         'DocSubTitle',
         parent=styles['Normal'],
-        fontSize=9,
-        leading=12,
+        fontSize=8,
+        leading=10,
         alignment=1, # Center
         textColor=colors.HexColor("#4b5563"),
-        spaceAfter=6
+        spaceAfter=3
     )
     section_head = ParagraphStyle(
         'SecHead',
         parent=styles['Heading2'],
-        fontSize=10,
-        leading=13,
+        fontSize=9,
+        leading=11,
         textColor=colors.HexColor("#1f2937"),
-        spaceBefore=8,
-        spaceAfter=4
+        spaceBefore=4,
+        spaceAfter=2
     )
     body_text = ParagraphStyle(
         'BodyDark',
         parent=styles['Normal'],
-        fontSize=8.5,
-        leading=11,
+        fontSize=7.5,
+        leading=9.5,
         textColor=colors.HexColor("#1f2937")
     )
     body_bold = ParagraphStyle(
@@ -97,8 +97,8 @@ def generate_inspection_pdf(scan_record: Dict[str, Any], output_path: Optional[s
     notice_text = ParagraphStyle(
         'NoticeText',
         parent=styles['Normal'],
-        fontSize=8,
-        leading=11,
+        fontSize=7.5,
+        leading=9.5,
         textColor=colors.HexColor("#b91c1c")
     )
 
@@ -108,9 +108,9 @@ def generate_inspection_pdf(scan_record: Dict[str, Any], output_path: Optional[s
     story.append(Paragraph("GOVERNMENT OF INDIA", title_style))
     story.append(Paragraph("MINISTRY OF CONSUMER AFFAIRS, FOOD & PUBLIC DISTRIBUTION", subtitle_style))
     story.append(Paragraph("DEPARTMENT OF CONSUMER AFFAIRS — LEGAL METROLOGY DIVISION", subtitle_style))
-    story.append(Paragraph("<b>STATUTORY INSPECTION MEMORANDUM & COMPLIANCE DOSSIER</b>", ParagraphStyle('SubSub', parent=title_style, fontSize=11, textColor=colors.HexColor("#111827"))))
+    story.append(Paragraph("<b>STATUTORY INSPECTION MEMORANDUM & COMPLIANCE DOSSIER</b>", ParagraphStyle('SubSub', parent=title_style, fontSize=10, leading=12, textColor=colors.HexColor("#111827"))))
     story.append(Paragraph("<i>[Under Rule 19 & Seventh Schedule of Legal Metrology (Packaged Commodities) Rules, 2011]</i>", subtitle_style))
-    story.append(HRFlowable(width="100%", thickness=1.5, color=colors.HexColor("#1e3a8a"), spaceAfter=8))
+    story.append(HRFlowable(width="100%", thickness=1.2, color=colors.HexColor("#1e3a8a"), spaceAfter=4))
 
     # 2. Metadata Banner
     is_comp = scan_record.get("is_compliant", False)
@@ -132,62 +132,150 @@ def generate_inspection_pdf(scan_record: Dict[str, Any], output_path: Optional[s
             Paragraph("<b>Jurisdiction:</b> District Consumer Metrology Cell", body_text)
         ]
     ]
-    t_meta = Table(meta_data, colWidths=[90 * mm, 90 * mm])
+    t_meta = Table(meta_data, colWidths=[93 * mm, 93 * mm])
     t_meta.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor("#f9fafb")),
         ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor("#e5e7eb")),
         ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#f3f4f6")),
-        ('TOPPADDING', (0, 0), (-1, -1), 3),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+        ('TOPPADDING', (0, 0), (-1, -1), 1.5),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 1.5),
     ]))
     story.append(t_meta)
-    story.append(Spacer(1, 4 * mm))
+    story.append(Spacer(1, 2 * mm))
 
     # 3. Commodity & Manufacturer Profile
     story.append(Paragraph("<b>1. PARTICULARS OF PACKAGED COMMODITY (RULE 6)</b>", section_head))
     extracted = scan_record.get("raw_extracted", {})
+    violations = scan_record.get("violations", [])
     
+    has_inverted_exp = any(v.get("rule_id") == "RULE_6_1_D_INVERTED_EXPIRY" for v in violations)
+    has_usp_mismatch = any(v.get("rule_id") == "RULE_6_11_USP_MISMATCH" for v in violations)
+    has_tax_clause_missing = any(v.get("rule_id") == "RULE_6_1_E_TAX_CLAUSE" for v in violations)
+    has_mrp_missing = any(v.get("rule_id") == "RULE_6_1_E_MRP_MISSING" for v in violations)
+
+    def format_statutory_field(val, rule_tag=""):
+        if not val or str(val).strip() in ["", "None", "null", "N/A"]:
+            tag_str = f" [{rule_tag}]" if rule_tag else ""
+            return f"<font color='#b91c1c'><b>NOT DECLARED{tag_str}</b></font>"
+        # Clean any unicode rupee symbol that causes ReportLab Helvetica box glyph glitch
+        clean_s = str(val).replace("₹", "Rs. ")
+        return clean_s
+
+    # Commodity / Generic Name
+    gen_name = extracted.get("generic_name") or scan_record.get("commodity_name")
+    if gen_name and any(noise in str(gen_name).lower() for noise in ["pou wformaton", "unspecified", "scanned"]):
+        gen_name = None
+    comm_display = format_statutory_field(gen_name, "Rule 6(1)(b)")
+
+    # Manufacturer & Address
+    mfr_name = scan_record.get("manufacturer_name") or extracted.get("manufacturer_name")
+    if mfr_name in ["Unknown Manufacturer", "None", "null"]: mfr_name = None
+    mfr_display = format_statutory_field(mfr_name, "Rule 6(1)(a)")
+
+    mfr_addr = extracted.get("manufacturer_address")
+    if mfr_addr in ["None", "null"]: mfr_addr = None
+    addr_display = format_statutory_field(mfr_addr, "Rule 6(1)(a)")
+
+    # Net Quantity & Batch Number
+    net_q = scan_record.get("net_quantity") or extracted.get("net_quantity_raw")
+    net_display = format_statutory_field(net_q, "Rule 6(1)(c)")
+
+    batch_no = scan_record.get("batch_number") or extracted.get("batch_number")
+    batch_display = format_statutory_field(batch_no, "Rule 6(1)(d)")
+
+    # MRP & USP
+    mrp_val = scan_record.get("mrp") or extracted.get("mrp_raw")
+    if has_mrp_missing or not mrp_val:
+        mrp_display = "<font color='#b91c1c'><b>NOT DECLARED [Rule 6(1)(e)]</b></font>"
+    else:
+        mrp_str = str(mrp_val).replace("₹", "Rs. ")
+        if has_tax_clause_missing:
+            mrp_display = f"{mrp_str} <font color='#d97706'><b>[Tax Clause Missing]</b></font>"
+        else:
+            mrp_display = mrp_str
+
+    usp_val = scan_record.get("unit_sale_price") or extracted.get("unit_sale_price_raw")
+    if not usp_val or str(usp_val).strip() in ["", "None", "null"]:
+        usp_display = "<font color='#b91c1c'><b>NOT DECLARED [Rule 6(11)]</b></font>"
+    else:
+        usp_str = str(usp_val).replace("₹", "Rs. ")
+        if has_usp_mismatch:
+            usp_display = f"{usp_str} <font color='#b91c1c'><b>[CALCULATION MISMATCH]</b></font>"
+        else:
+            usp_display = usp_str
+
+    # Dates
+    mfg_d = scan_record.get("mfg_date") or extracted.get("mfg_date")
+    mfg_display = format_statutory_field(mfg_d, "Rule 6(1)(d)")
+
+    exp_d = scan_record.get("exp_date") or extracted.get("exp_date")
+    if not exp_d or str(exp_d).strip() in ["", "None", "null"]:
+        exp_display = "<font color='#4b5563'>Not Declared</font>"
+    else:
+        exp_str = str(exp_d)
+        if has_inverted_exp:
+            exp_display = f"{exp_str} <font color='#b91c1c'><b>[INVALID: Precedes Mfg]</b></font>"
+        else:
+            exp_display = exp_str
+
+    # Consumer Care
+    care_p = extracted.get("consumer_care_phone")
+    care_e = extracted.get("consumer_care_email")
+    if not care_p and not care_e:
+        care_display = "<font color='#b91c1c'><b>NOT DECLARED [Rule 6(2)]</b></font>"
+    else:
+        parts = []
+        if care_p: parts.append(str(care_p))
+        if care_e: parts.append(str(care_e))
+        care_display = " | ".join(parts)
+
     prod_table_data = [
         [
             Paragraph("<b>Commodity Name:</b>", body_bold),
-            Paragraph(str(scan_record.get("commodity_name", "N/A")), body_text),
+            Paragraph(comm_display, body_text),
             Paragraph("<b>Category:</b>", body_bold),
-            Paragraph(str(scan_record.get("category", "Retail Pack")), body_text)
+            Paragraph(str(scan_record.get("category", "Packaged Retail Goods")), body_text)
         ],
         [
             Paragraph("<b>Manufacturer/Packer:</b>", body_bold),
-            Paragraph(str(scan_record.get("manufacturer_name", "N/A")), body_text),
+            Paragraph(mfr_display, body_text),
             Paragraph("<b>Country of Origin:</b>", body_bold),
-            Paragraph(str(extracted.get("country_of_origin", "India")), body_text)
-        ],
-        [
-            Paragraph("<b>Declared Net Quantity:</b>", body_bold),
-            Paragraph(str(scan_record.get("net_quantity", "N/A")), body_text),
-            Paragraph("<b>MRP (Incl. of all taxes):</b>", body_bold),
-            Paragraph(str(scan_record.get("mrp", "N/A")), body_text)
-        ],
-        [
-            Paragraph("<b>Unit Sale Price (USP):</b>", body_bold),
-            Paragraph(str(scan_record.get("unit_sale_price", "N/A")), body_text),
-            Paragraph("<b>Month & Year of Mfg:</b>", body_bold),
-            Paragraph(str(scan_record.get("mfg_date", "N/A")), body_text)
+            Paragraph(str(extracted.get("country_of_origin") or "India"), body_text)
         ],
         [
             Paragraph("<b>Manufacturer Address:</b>", body_bold),
-            Paragraph(str(extracted.get("manufacturer_address", "N/A")), body_text),
+            Paragraph(addr_display, body_text),
             Paragraph("<b>Consumer Care:</b>", body_bold),
-            Paragraph(f"{extracted.get('consumer_care_phone', '')} | {extracted.get('consumer_care_email', '')}", body_text)
+            Paragraph(care_display, body_text)
+        ],
+        [
+            Paragraph("<b>Declared Net Qty:</b>", body_bold),
+            Paragraph(net_display, body_text),
+            Paragraph("<b>Batch / Lot No:</b>", body_bold),
+            Paragraph(batch_display, body_text)
+        ],
+        [
+            Paragraph("<b>MRP (Incl. of taxes):</b>", body_bold),
+            Paragraph(mrp_display, body_text),
+            Paragraph("<b>Unit Sale Price (USP):</b>", body_bold),
+            Paragraph(usp_display, body_text)
+        ],
+        [
+            Paragraph("<b>Month & Year of Mfg:</b>", body_bold),
+            Paragraph(mfg_display, body_text),
+            Paragraph("<b>Expiry / Best Before:</b>", body_bold),
+            Paragraph(exp_display, body_text)
         ]
     ]
-    t_prod = Table(prod_table_data, colWidths=[40 * mm, 50 * mm, 40 * mm, 50 * mm])
+    t_prod = Table(prod_table_data, colWidths=[42 * mm, 51 * mm, 42 * mm, 51 * mm])
     t_prod.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor("#ffffff")),
         ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#d1d5db")),
-        ('TOPPADDING', (0, 0), (-1, -1), 3),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+        ('TOPPADDING', (0, 0), (-1, -1), 1.5),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 1.5),
     ]))
     story.append(t_prod)
-    story.append(Spacer(1, 4 * mm))
+    story.append(Spacer(1, 2 * mm))
 
     # 4. Violations & Infringement Audit Table
     story.append(Paragraph("<b>2. STATUTORY INFRINGEMENTS & RULE VIOLATIONS AUDIT</b>", section_head))
@@ -195,11 +283,11 @@ def generate_inspection_pdf(scan_record: Dict[str, Any], output_path: Optional[s
     
     if not violations:
         no_viol_data = [[Paragraph("<b>COMPLIANCE VERIFIED:</b> No statutory violations detected under Legal Metrology (Packaged Commodities) Rules, 2011 and Amendments.", body_text)]]
-        t_viol = Table(no_viol_data, colWidths=[180 * mm])
+        t_viol = Table(no_viol_data, colWidths=[186 * mm])
         t_viol.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor("#f0fdf4")),
             ('BOX', (0, 0), (-1, -1), 1, colors.HexColor("#86efac")),
-            ('PADDING', (0, 0), (-1, -1), 6),
+            ('PADDING', (0, 0), (-1, -1), 4),
         ]))
         story.append(t_viol)
     else:
@@ -221,17 +309,17 @@ def generate_inspection_pdf(scan_record: Dict[str, Any], output_path: Optional[s
                 Paragraph(f"<b>{v.get('title', '')}:</b> {v.get('description', '')}", body_text),
                 Paragraph(f"<b>{v.get('statutory_penalty_ref', v.get('penalty_ref', 'Sec 36(1)'))}</b>", body_text)
             ])
-        t_viol = Table(v_rows, colWidths=[8 * mm, 38 * mm, 20 * mm, 80 * mm, 34 * mm])
+        t_viol = Table(v_rows, colWidths=[7 * mm, 38 * mm, 18 * mm, 87 * mm, 36 * mm])
         t_viol.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#f3f4f6")),
             ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#d1d5db")),
-            ('TOPPADDING', (0, 0), (-1, -1), 3),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+            ('TOPPADDING', (0, 0), (-1, -1), 1.2),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 1.2),
             ('VALIGN', (0, 0), (-1, -1), 'TOP'),
         ]))
         story.append(t_viol)
 
-    story.append(Spacer(1, 4 * mm))
+    story.append(Spacer(1, 2 * mm))
 
     # 5. Legal Notice & Directives
     if violations:
@@ -246,11 +334,11 @@ def generate_inspection_pdf(scan_record: Dict[str, Any], output_path: Optional[s
             "within 15 days of this memorandum."
         )
         story.append(Paragraph(notice_clause, notice_text))
-        story.append(Spacer(1, 4 * mm))
+        story.append(Spacer(1, 2 * mm))
 
     # 6. Officer Endorsement & Signatures (Seventh Schedule Form A/B style)
     story.append(KeepTogether([
-        HRFlowable(width="100%", thickness=0.5, color=colors.HexColor("#9ca3af"), spaceAfter=6),
+        HRFlowable(width="100%", thickness=0.5, color=colors.HexColor("#9ca3af"), spaceAfter=3),
         Table([
             [
                 Paragraph("<b>Inspecting Legal Metrology Officer:</b>", body_bold),
@@ -268,9 +356,9 @@ def generate_inspection_pdf(scan_record: Dict[str, Any], output_path: Optional[s
                 Paragraph(f"Date & Place: {datetime.now().strftime('%d/%m/%Y')}, New Delhi", body_text),
                 Paragraph("Witness Signature: __________________", body_text)
             ]
-        ], colWidths=[90 * mm, 90 * mm], style=[
-            ('TOPPADDING', (0, 0), (-1, -1), 2),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+        ], colWidths=[93 * mm, 93 * mm], style=[
+            ('TOPPADDING', (0, 0), (-1, -1), 1),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 1),
         ])
     ]))
 
