@@ -22,19 +22,38 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
 
-if os.environ.get("VERCEL"):
-    UPLOADS_DIR = "/tmp/uploads"
-    REPORTS_DIR = "/tmp/reports"
-else:
-    UPLOADS_DIR = os.path.join(STATIC_DIR, "uploads")
-    REPORTS_DIR = os.path.join(BASE_DIR, "reports")
+# Determine writable directory for uploads and reports
+def _get_writable_dir(name: str) -> str:
+    # On serverless (Vercel, AWS Lambda), always use /tmp
+    if os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"):
+        p = os.path.join("/tmp", name)
+        try:
+            os.makedirs(p, exist_ok=True)
+            return p
+        except Exception:
+            return "/tmp"
+    
+    # Try local base directory first
+    p = os.path.join(BASE_DIR, name)
+    try:
+        os.makedirs(p, exist_ok=True)
+        return p
+    except Exception:
+        p = os.path.join("/tmp", name)
+        try:
+            os.makedirs(p, exist_ok=True)
+            return p
+        except Exception:
+            return "/tmp"
 
-os.makedirs(STATIC_DIR, exist_ok=True)
-os.makedirs(UPLOADS_DIR, exist_ok=True)
-os.makedirs(REPORTS_DIR, exist_ok=True)
+UPLOADS_DIR = _get_writable_dir("uploads")
+REPORTS_DIR = _get_writable_dir("reports")
 
-# Initialize Database
-database.init_db()
+# Initialize Database safely
+try:
+    database.init_db()
+except Exception as e:
+    print(f"Warning: Database init error ({e}). Continuing with fallback.")
 
 # Initialize AI & Rule Services
 rule_engine = LMPCRuleEngine()
@@ -54,16 +73,48 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount static directory for sample assets
-app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+# Mount static directory for sample assets if physical folder exists
+if os.path.exists(STATIC_DIR):
+    try:
+        app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+    except Exception as e:
+        print(f"Notice: Could not mount /static ({e})")
+
+def get_dashboard_html() -> str:
+    # 1. Search filesystem paths
+    for p in [
+        os.path.join(TEMPLATES_DIR, "index.html"),
+        os.path.join(BASE_DIR, "templates", "index.html"),
+        os.path.join(os.getcwd(), "templates", "index.html")
+    ]:
+        if os.path.exists(p):
+            try:
+                with open(p, "r", encoding="utf-8") as f:
+                    return f.read()
+            except Exception:
+                pass
+    # 2. Use embedded fallback template
+    try:
+        from embedded_template import DASHBOARD_HTML
+        return DASHBOARD_HTML
+    except Exception:
+        return "<h1>LMPC SmartInspector</h1><p>Dashboard template loaded in minimal fallback mode.</p>"
+
+@app.get("/api/health")
+async def health_check():
+    """Diagnostic health check endpoint"""
+    return {
+        "status": "healthy",
+        "system": "LMPC SmartInspector",
+        "env_vercel": bool(os.environ.get("VERCEL")),
+        "uploads_dir": UPLOADS_DIR,
+        "reports_dir": REPORTS_DIR,
+        "samples_loaded": len(extractor.preloaded_samples)
+    }
 
 @app.get("/", response_class=HTMLResponse)
 async def serve_dashboard():
-    index_file = os.path.join(TEMPLATES_DIR, "index.html")
-    if not os.path.exists(index_file):
-        raise HTTPException(status_code=404, detail="Dashboard UI template missing.")
-    with open(index_file, "r", encoding="utf-8") as f:
-        return HTMLResponse(content=f.read())
+    return HTMLResponse(content=get_dashboard_html())
 
 @app.get("/api/samples")
 async def get_samples():

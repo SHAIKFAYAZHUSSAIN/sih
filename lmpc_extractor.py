@@ -10,8 +10,17 @@ import json
 import base64
 from typing import Dict, Any, List, Optional
 from datetime import datetime
-import cv2
-import numpy as np
+try:
+    import cv2
+except Exception:
+    cv2 = None
+
+try:
+    import numpy as np
+except Exception:
+    np = None
+
+from PIL import Image
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SAMPLE_DIR = os.path.join(BASE_DIR, "sample_data")
@@ -38,15 +47,33 @@ class LMPCExtractor:
             self.ocr_engine = None
 
     def _load_samples(self):
-        if os.path.exists(SAMPLE_DIR):
-            for fname in os.listdir(SAMPLE_DIR):
-                if fname.endswith(".json"):
-                    try:
-                        with open(os.path.join(SAMPLE_DIR, fname), "r", encoding="utf-8") as f:
-                            data = json.load(f)
-                            self.preloaded_samples[data["id"]] = data
-                    except Exception as e:
-                        print(f"Failed loading sample {fname}: {e}")
+        # 1. Search filesystem directories
+        possible_dirs = [
+            SAMPLE_DIR,
+            os.path.join(BASE_DIR, "sample_data"),
+            os.path.join(os.getcwd(), "sample_data")
+        ]
+        for sdir in possible_dirs:
+            if os.path.exists(sdir):
+                for fname in os.listdir(sdir):
+                    if fname.endswith(".json"):
+                        try:
+                            with open(os.path.join(sdir, fname), "r", encoding="utf-8") as f:
+                                data = json.load(f)
+                                self.preloaded_samples[data["id"]] = data
+                        except Exception as e:
+                            print(f"Failed loading sample {fname}: {e}")
+                if len(self.preloaded_samples) > 0:
+                    break
+
+        # 2. Fallback to embedded samples if filesystem has no files
+        if len(self.preloaded_samples) == 0:
+            try:
+                from embedded_samples import EMBEDDED_SAMPLES
+                self.preloaded_samples = dict(EMBEDDED_SAMPLES)
+                print("Loaded", len(self.preloaded_samples), "embedded benchmark samples.")
+            except Exception as e:
+                print(f"Notice: embedded samples fallback error: {e}")
 
     def _get_image_base64_url(self, file_path: str) -> str:
         """Converts an image file to a Base64 data URL for 100% reliable serverless delivery"""
@@ -82,11 +109,19 @@ class LMPCExtractor:
         if not os.path.exists(image_path):
             raise FileNotFoundError(f"Image not found at {image_path}")
 
-        cv_img = cv2.imread(image_path)
-        if cv_img is None:
-            raise ValueError("Failed reading image with OpenCV.")
-            
-        h, w = cv_img.shape[:2]
+        # Use Pillow to reliably read image dimensions without requiring cv2
+        try:
+            with Image.open(image_path) as im:
+                w, h = im.size
+        except Exception:
+            w, h = 800, 600
+
+        cv_img = None
+        if cv2 is not None:
+            try:
+                cv_img = cv2.imread(image_path)
+            except Exception:
+                cv_img = None
 
         # 1. Check if client-side OCR (Tesseract.js) supplied extracted text and bounding boxes
         ocr_results = []
@@ -104,7 +139,7 @@ class LMPCExtractor:
                 print(f"Notice: Failed parsing client OCR json: {e}")
 
         # 2. Execute local RapidOCR if available and no client OCR was passed
-        if not ocr_results and self.ocr_engine is not None:
+        if not ocr_results and self.ocr_engine is not None and cv_img is not None:
             try:
                 res, _ = self.ocr_engine(cv_img)
                 if res:
@@ -117,9 +152,8 @@ class LMPCExtractor:
             extracted, bounding_boxes = self._parse_ocr_declarations(ocr_results, cv_img, h, w)
         else:
             # Fallback to morphological gradient detection
-            gray = cv2.cvtColor(cv_img, cv2.COLOR_BGR2GRAY)
-            bounding_boxes = self._detect_morphological_boxes(gray, h, w)
-            extracted = self._heuristic_label_parser(gray, h, w)
+            bounding_boxes = self._detect_morphological_boxes(cv_img, h, w)
+            extracted = self._heuristic_label_parser(None, h, w)
 
         # 4. Base64 encode image for 100% reliable frontend rendering
         data_url = self._get_image_base64_url(image_path)
@@ -375,23 +409,30 @@ class LMPCExtractor:
                 continue
         return None
 
-    def _detect_morphological_boxes(self, gray, h: int, w: int) -> List[Dict[str, Any]]:
-        """Fallback box detection using morphological gradient"""
-        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
-        grad = cv2.morphologyEx(gray, cv2.MORPH_GRADIENT, kernel)
-        _, bw = cv2.threshold(grad, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
+    def _detect_morphological_boxes(self, cv_img, h: int, w: int) -> List[Dict[str, Any]]:
+        """Fallback box detection using morphological gradient if cv2 is installed"""
+        if cv2 is not None and cv_img is not None:
+            try:
+                gray = cv2.cvtColor(cv_img, cv2.COLOR_BGR2GRAY)
+                kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+                grad = cv2.morphologyEx(gray, cv2.MORPH_GRADIENT, kernel)
+                _, bw = cv2.threshold(grad, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
 
-        conn_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (11, 3))
-        connected = cv2.morphologyEx(bw, cv2.MORPH_CLOSE, conn_kernel)
+                conn_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (11, 3))
+                connected = cv2.morphologyEx(bw, cv2.MORPH_CLOSE, conn_kernel)
 
-        contours, _ = cv2.findContours(connected, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        raw_boxes = []
-        for c in contours:
-            bx, by, bw_val, bh_val = cv2.boundingRect(c)
-            if bw_val > 20 and bh_val > 6 and bw_val < w * 0.98 and bh_val < h * 0.5:
-                raw_boxes.append([bx, by, bx + bw_val, by + bh_val])
+                contours, _ = cv2.findContours(connected, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                raw_boxes = []
+                for c in contours:
+                    bx, by, bw_val, bh_val = cv2.boundingRect(c)
+                    if bw_val > 20 and bh_val > 6 and bw_val < w * 0.98 and bh_val < h * 0.5:
+                        raw_boxes.append([bx, by, bx + bw_val, by + bh_val])
 
-        return self._cluster_into_statutory_blocks(raw_boxes, h, w)
+                return self._cluster_into_statutory_blocks(raw_boxes, h, w)
+            except Exception:
+                pass
+
+        return self._cluster_into_statutory_blocks([], h, w)
 
     def _cluster_into_statutory_blocks(self, raw_boxes: List[List[int]], h: int, w: int) -> List[Dict[str, Any]]:
         """Organizes detected text lines into labeled statutory regions"""

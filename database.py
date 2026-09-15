@@ -9,17 +9,33 @@ import json
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 
-# On Vercel, only /tmp is writable
-if os.environ.get("VERCEL"):
-    DB_PATH = "/tmp/lmpc_inspections.db"
-else:
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    DB_PATH = os.path.join(BASE_DIR, "lmpc_inspections.db")
+def _resolve_db_path() -> str:
+    # On serverless platforms, only /tmp is writable
+    if os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME") or os.environ.get("LAMBDA_TASK_ROOT"):
+        return "/tmp/lmpc_inspections.db"
+    base = os.path.dirname(os.path.abspath(__file__))
+    try:
+        test_file = os.path.join(base, ".write_test")
+        with open(test_file, "w") as f:
+            f.write("1")
+        os.remove(test_file)
+        return os.path.join(base, "lmpc_inspections.db")
+    except Exception:
+        return "/tmp/lmpc_inspections.db"
+
+DB_PATH = _resolve_db_path()
 
 def get_connection():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
+    global DB_PATH
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        return conn
+    except Exception:
+        # Safe fallback to in-memory database if filesystem is strictly read-only
+        conn = sqlite3.connect(":memory:")
+        conn.row_factory = sqlite3.Row
+        return conn
 
 def init_db():
     conn = get_connection()

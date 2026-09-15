@@ -14,13 +14,29 @@ from reportlab.platypus import (
 )
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
-# On Vercel, write to /tmp/reports
-if os.environ.get("VERCEL"):
-    REPORTS_DIR = "/tmp/reports"
-else:
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    REPORTS_DIR = os.path.join(BASE_DIR, "reports")
-os.makedirs(REPORTS_DIR, exist_ok=True)
+def _get_reports_dir() -> str:
+    # On serverless (Vercel, AWS Lambda), write to /tmp
+    if os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"):
+        p = "/tmp/reports"
+        try:
+            os.makedirs(p, exist_ok=True)
+            return p
+        except Exception:
+            return "/tmp"
+    base = os.path.dirname(os.path.abspath(__file__))
+    p = os.path.join(base, "reports")
+    try:
+        os.makedirs(p, exist_ok=True)
+        return p
+    except Exception:
+        p = "/tmp/reports"
+        try:
+            os.makedirs(p, exist_ok=True)
+            return p
+        except Exception:
+            return "/tmp"
+
+REPORTS_DIR = _get_reports_dir()
 
 def generate_inspection_pdf(scan_record: Dict[str, Any], output_path: Optional[str] = None) -> str:
     scan_uid = scan_record.get("scan_uid", f"LM-{datetime.now().strftime('%Y%m%d%H%M%S')}")
